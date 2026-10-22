@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>spring-javafx · WebEngine 能力演示</title>
+<style>
+    /* ==================================================================
+       TDesign（腾讯设计体系）风格 · 亮色
+       品牌色 #0052D9 / 成功 #2BA471 / 警告 #E37318 / 错误 #D54941
+       圆角 3px（控件）· 6px（卡片）· 按钮高度 32px
+       注意：JavaFX 8 的 WebKit 538 不支持 CSS 变量、Grid、flex gap，
+             因此颜色写字面值，间距用 margin。
+       ================================================================== */
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+        font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: rgba(0, 0, 0, 0.9);
+        background: #F3F3F3;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    code, .mono { font-family: Consolas, Menlo, "Courier New", monospace; }
+
+    /* ------------------------------ 顶栏 ------------------------------ */
+
+    .app-header {
+        height: 56px;
+        flex: 0 0 56px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #E7E7E7;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+    }
+
+    .brand { display: flex; align-items: center; }
+
+    .brand-mark {
+        width: 28px; height: 28px;
+        border-radius: 6px;
+        background: #0052D9;
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 15px;
+        text-align: center;
+        line-height: 28px;
+        margin-right: 10px;
+    }
+
+    .brand-title { font-size: 15px; font-weight: 600; line-height: 20px; }
+    .brand-sub { font-size: 12px; color: rgba(0, 0, 0, 0.4); line-height: 16px; }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; }
+
+    .tag {
+        height: 22px;
+        line-height: 20px;
+        padding: 0 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.6);
+        background: #F3F3F3;
+        margin-left: 8px;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .tag-brand { color: #0052D9; background: #ECF2FE; }
+    .tag-success { color: #2BA471; background: #E8F8F2; }
+
+    .dot {
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.26);
+        margin-right: 6px;
+        vertical-align: 1px;
+    }
+
+    .dot-ok { background: #2BA471; }
+
+    /* ------------------------------ 布局 ------------------------------ */
+
+    .layout { flex: 1 1 auto; display: flex; min-height: 0; }
+
+    .sidebar {
+        width: 196px;
+        flex: 0 0 196px;
+        background: #FFFFFF;
+        border-right: 1px solid #E7E7E7;
+        padding: 8px;
+        overflow: auto;
+    }
+
+    .nav-item {
+        height: 36px;
+        line-height: 36px;
+        padding: 0 10px;
+        border-radius: 3px;
+        margin-bottom: 2px;
+        cursor: pointer;
+        color: rgba(0, 0, 0, 0.9);
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .nav-item:hover { background: #F3F3F3; }
+
+    .nav-item.active { background: #ECF2FE; color: #0052D9; font-weight: 600; }
+
+    .nav-icon { vertical-align: -2px; margin-right: 8px; }
+
+    .main { flex: 1 1 auto; overflow: auto; padding: 16px 20px 20px 20px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ------------------------------ 卡片 ------------------------------ */
+
+    .card {
+        background: #FFFFFF;
+        border-radius: 6px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .card-head { padding-bottom: 12px; border-bottom: 1px solid #F5F5F5; margin-bottom: 4px; }
+
+    .card-title { font-size: 15px; font-weight: 600; }
+
+    .card-desc { font-size: 12px; color: rgba(0, 0, 0, 0.4); margin-left: 8px; }
+
+    /* --------------------------- 操作行 --------------------------- */
+
+    .op {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 9px 0;
+        border-bottom: 1px dashed #F0F0F0;
+    }
+    .op:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .op-main { flex: 1 1 auto; min-width: 260px; padding-right: 12px; }
+
+    .op-name {
+        display: inline-block;
+        font-family: Consolas, Menlo, monospace;
+        font-size: 12px;
+        color: #0052D9;
+        background: #ECF2FE;
+        border-radius: 3px;
+        padding: 1px 6px;
+    }
+
+    .op-desc { font-size: 12px; color: rgba(0, 0, 0, 0.4); margin-left: 8px; }
+
+    .op-ctrl { display: flex; flex-wrap: wrap; align-items: center; }
+
+    .field { display: inline-flex; align-items: center; margin: 0 8px 0 0; }
+
+    .field > span { font-size: 12px; color: rgba(0, 0, 0, 0.6); margin-right: 6px; }
+
+    /* --------------------------- 表单控件 --------------------------- */
+
+    .input {
+        height: 32px;
+        border: 1px solid #DCDCDC;
+        border-radius: 3px;
+        background: #FFFFFF;
+        color: rgba(0, 0, 0, 0.9);
+        font-size: 13px;
+        font-family: inherit;
+        padding: 0 10px;
+        outline: none;
+        margin-right: 8px;
+    }
+
+    .input:focus { border-color: #0052D9; }
+
+    input::-webkit-input-placeholder { color: rgba(0, 0, 0, 0.4); }
+
+    /* --------------------------- 按钮 --------------------------- */
+
+    .btn {
+        height: 32px;
+        padding: 0 16px;
+        border: none;
+        border-radius: 3px;
+        background: #F3F3F3;
+        color: rgba(0, 0, 0, 0.9);
+        font-size: 14px;
+        font-family: inherit;
+        cursor: pointer;
+        margin-right: 8px;
+        outline: none;
+    }
+
+    .btn:last-child { margin-right: 0; }
+    .btn:hover { background: #EEEEEE; }
+
+    .btn-primary { background: #0052D9; color: #FFFFFF; }
+    .btn-primary:hover { background: #366EF4; }
+
+    .btn-danger { background: #D54941; color: #FFFFFF; }
+    .btn-danger:hover { background: #E5665E; }
+
+    .btn-sm { height: 24px; padding: 0 10px; font-size: 12px; }
+
+    .btn-text { background: transparent; color: #0052D9; padding: 0 6px; }
+    .btn-text:hover { background: #ECF2FE; }
+
+    /* --------------------------- 概览 --------------------------- */
+
+    .stats { display: flex; flex-wrap: wrap; margin-bottom: 16px; }
+
+    .stat {
+        background: #FFFFFF;
+        border-radius: 6px;
+        padding: 14px 18px;
+        width: 210px;
+        flex: 0 0 210px;
+        margin: 0 12px 12px 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .stat-label { font-size: 12px; color: rgba(0, 0, 0, 0.4); margin-bottom: 4px; }
+
+    .stat-value {
+        font-size: 15px;
+        font-weight: 600;
+        word-break: break-all;
+    }
+
+    .quick { padding-top: 12px; }
+
+    .notes { padding-top: 12px; padding-left: 18px; }
+
+    .notes li { font-size: 13px; color: rgba(0, 0, 0, 0.6); margin-bottom: 6px; }
+
+    .notes code {
+        background: #F3F3F3;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.9);
+    }
+
+    /* --------------------------- 表格 --------------------------- */
+
+    .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    .tbl th {
+        text-align: left;
+        font-weight: 500;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.4);
+        background: #FAFAFA;
+        padding: 8px 12px;
+        border-bottom: 1px solid #E7E7E7;
+    }
+
+    .tbl td { padding: 9px 12px; border-bottom: 1px solid #F5F5F5; }
+
+    .tbl td.nowrap { white-space: nowrap; }
+
+    .tbl tr:last-child td { border-bottom: none; }
+
+    .empty { color: rgba(0, 0, 0, 0.4); font-size: 13px; padding: 14px 0; }
+
+    /* --------------------------- 控制台 --------------------------- */
+
+    .console {
+        height: 190px;
+        flex: 0 0 190px;
+        background: #FFFFFF;
+        border-top: 1px solid #E7E7E7;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .console.collapsed { flex: 0 0 40px; height: 40px; }
+    .console.collapsed .console-body { display: none; }
+
+    .console-head {
+        height: 40px;
+        flex: 0 0 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .console-title { font-size: 13px; font-weight: 600; }
+
+    .console-actions { margin-left: auto; }
+
+    .console-body {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 8px 20px;
+        font-family: Consolas, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .log-line { word-break: break-all; }
+
+    .log-time { color: rgba(0, 0, 0, 0.26); margin-right: 8px; }
+
+    .log-info { color: #0052D9; }
+    .log-success { color: #2BA471; }
+    .log-warn { color: #E37318; }
+    .log-error { color: #D54941; }
+    .log-muted { color: rgba(0, 0, 0, 0.4); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="brand">
+        <div class="brand-mark">S</div>
+        <div>
+            <div class="brand-title">spring-javafx</div>
+            <div class="brand-sub">JavaFX + WebEngine 能力演示</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <span class="tag" id="roleTag">主窗口</span>
+        <span class="tag tag-brand" id="apiTag"><i class="dot" id="apiDot"></i><span id="apiText">等待 API 注入</span></span>
+    </div>
+</header>
+
+<div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main">
+        <!-- ==================== 概览 ==================== -->
+        <section class="panel active" id="panel-overview">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">窗口角色</div>
+                    <div class="stat-value" id="statRole">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">ControllerKey</div>
+                    <div class="stat-value mono" id="statKey">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">父窗口</div>
+                    <div class="stat-value mono" id="statParent">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">窗口尺寸</div>
+                    <div class="stat-value" id="statSize">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">可调整大小</div>
+                    <div class="stat-value" id="statResizable">—</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">子窗口数</div>
+                    <div class="stat-value" id="statChildren">—</div>
+                </div>
+            </div>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">快捷操作</span><span class="card-desc">常用入口</span></div>
+                <div class="quick">
+                    <button class="btn btn-primary" onclick="quickCreate('scene')">打开子窗口</button>
+                    <button class="btn" onclick="quickCreate('modal')">打开模态窗口</button>
+                    <button class="btn" onclick="quickAlert()">弹一个提示</button>
+                    <button class="btn" onclick="quickCallback()">触发全体回调</button>
+                    <button class="btn" onclick="openWindowApiDemo()">WindowApi 详细用法</button>
+                    <button class="btn btn-text" onclick="refreshAll()">刷新状态</button>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">说明</span></div>
+                <ul class="notes">
+                    <li>每个窗口持有独立的 <code>WindowApi</code> / <code>LoggerApi</code> 实例，不带 controllerKey 参数的方法只作用于当前窗口。</li>
+                    <li>按 key 操作窗口的方法统一以 <code>ByControllerKey</code> 结尾，key 来自 <code>WindowApi.getKey()</code> 或前端全局 <code>$controllerKey</code>。</li>
+                    <li><b>只有 <code>null</code> 表示主窗口</b>；空串或未知 key 一律视为"找不到窗口"（getter 返回 null、setter 不生效）。</li>
+                    <li><code>alert</code> / <code>confirm</code> / <code>prompt</code> 已由框架对话框接管，可在 <code>app.yml</code> 中替换实现或换肤。</li>
+                    <li>窗口关闭时框架会销毁该窗口的全部桥接器，本页的子窗口列表与日志会自动同步。</li>
+                </ul>
+            </section>
+        </section>
+
+        <!-- ==================== 日志 ==================== -->
+        <section class="panel" id="panel-logger"></section>
+
+        <!-- ==================== 当前窗口 ==================== -->
+        <section class="panel" id="panel-window">
+            <section class="card">
+                <div class="card-head"><span class="card-title">窗口属性</span><span class="card-desc">读取 / 设置当前窗口（无 key 参数）</span></div>
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">属性</th>
+                            <th style="width:150px;">当前值</th>
+                            <th style="width:150px;">新值</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="propsBody"></tbody>
+                </table>
+            </section>
+            <div id="windowCards"></div>
+        </section>
+
+        <!-- ==================== 子窗口 ==================== -->
+        <section class="panel" id="panel-children">
+            <div id="childrenCards"></div>
+            <section class="card">
+                <div class="card-head">
+                    <span class="card-title">子窗口列表</span>
+                    <span class="card-desc" id="childrenHint">暂无子窗口</span>
+                </div>
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">类型</th>
+                            <th>ControllerKey</th>
+                            <th style="width:96px;">状态</th>
+                            <th style="width:290px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="childrenBody"></tbody>
+                </table>
+            </section>
+        </section>
+
+        <!-- ==================== 跨窗口 ==================== -->
+        <section class="panel" id="panel-cross">
+            <section class="card">
+                <div class="card-head"><span class="card-title">目标窗口</span><span class="card-desc">下列操作作用于该 ControllerKey，留空表示主窗口（传 null）</span></div>
+                <div class="op">
+                    <div class="op-ctrl">
+                        <input id="targetKey" class="input" style="width:340px;" placeholder="目标窗口 ControllerKey（留空=主窗口 null）">
+                        <select id="targetSelect" class="input" style="width:250px;">
+                            <option value="">选择已创建的子窗口</option>
+                        </select>
+                        <button class="btn" onclick="useCurrentKey()">使用当前窗口</button>
+                    </div>
+                </div>
+            </section>
+            <div id="crossCards"></div>
+        </section>
+
+        <!-- ==================== 弹窗 ==================== -->
+        <section class="panel" id="panel-dialog"></section>
+
+        <!-- ==================== 文件 ==================== -->
+        <section class="panel" id="panel-file"></section>
+    </main>
+</div>
+
+<footer class="console" id="console">
+    <div class="console-head">
+        <span class="console-title">调用日志</span>
+        <div class="console-actions">
+            <button class="btn btn-sm" onclick="clearLog()">清空</button>
+            <button class="btn btn-sm" id="consoleToggle" onclick="toggleConsole()">收起</button>
+        </div>
+    </div>
+    <div class="console-body" id="consoleBody"></div>
+</footer>
+
+<script>
+/* ====================================================================
+   全局状态
+   前端约定（与 AppConstant 对齐）：
+     $controllerKey         当前窗口 key（主窗口不注入，取 WindowApi.getKey() 为 null）
+     $parentControllerKey   父窗口 key
+   ==================================================================== */
+
+var apiReady = false;
+var children = [];          /* { key, type, status } */
+var typeLabel = {
+    createScene: '普通窗口',
+    createWindowScene: '窗口模态',
+    createApplicationScene: '应用模态',
+    extern: '框架创建'
+};
+
+/* ====================================================================
+   基础工具
+   ==================================================================== */
+
+function $(id) {
+    return document.getElementById(id);
+}
+
+function el(tag, cls) {
+    var node = document.createElement(tag);
+    if (cls) {
+        node.className = cls;
+    }
+    return node;
+}
+
+function nowStr() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+}
+
+function shortKey(key) {
+    if (!key) {
+        return '—';
+    }
+    return key.length > 10 ? key.substring(0, 10) + '…' : key;
+}
+
+function log(level, msg) {
+    var body = $('consoleBody');
+    if (!body) {
+        return;
+    }
+    var line = el('div', 'log-line');
+    var time = el('span', 'log-time');
+    time.textContent = nowStr();
+    var text = el('span', 'log-' + level);
+    text.textContent = msg;
+    line.appendChild(time);
+    line.appendChild(text);
+    body.appendChild(line);
+    while (body.childNodes.length > 300) {
+        body.removeChild(body.firstChild);
+    }
+    body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+    $('consoleBody').innerHTML = '';
+    log('muted', '日志已清空');
+}
+
+function toggleConsole() {
+    var panel = $('console');
+    if (panel.className.indexOf('collapsed') >= 0) {
+        panel.className = 'console';
+        $('consoleToggle').textContent = '收起';
+    } else {
+        panel.className = 'console collapsed';
+        $('consoleToggle').textContent = '展开';
+    }
+}
+
+/** Java 数组 / 集合 → JS 数组，便于展示 */
+function toList(value) {
+    var list = [];
+    if (value === null || value === undefined) {
+        return list;
+    }
+    try {
+        if (typeof value.length === 'number') {
+            for (var i = 0; i < value.length; i++) {
+                list.push(String(value[i]));
+            }
+            return list;
+        }
+        if (typeof value.iterator === 'function') {
+            var it = value.iterator();
+            while (it.hasNext()) {
+                list.push(String(it.next()));
+            }
+            return list;
+        }
+    } catch (e) {
+    }
+    return list;
+}
+
+/** Java 返回值 → 可读文本 */
+function fmt(value) {
+    if (value === null) {
+        return 'null';
+    }
+    if (value === undefined) {
+        return 'undefined';
+    }
+    if (typeof value === 'string') {
+        return value === '' ? '(空字符串)' : value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+    var list = toList(value);
+    if (list.length > 0 || (typeof value.length === 'number' && value.length === 0)) {
+        return '[' + list.join(', ') + ']';
+    }
+    return String(value);
+}
+
+/** 统一调用入口：未就绪提示、异常捕获、结果打印 */
+function safeCall(label, fn) {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，稍候再试：' + label);
+        return undefined;
+    }
+    try {
+        var result = fn();
+        if (result !== undefined) {
+            log('success', label + ' → ' + fmt(result));
+        }
+        return result;
+    } catch (e) {
+        log('error', label + ' 异常：' + (e && e.message ? e.message : e));
+        return undefined;
+    }
+}
+
+/* ====================================================================
+   导航
+   ==================================================================== */
+
+var ICONS = {
+    overview: '<rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1"/><rect x="9" y="9" width="4.5" height="4.5" rx="1"/>',
+    logger: '<path d="M3 4h10M3 8h10M3 12h6"/>',
+    window: '<rect x="2.5" y="3.5" width="11" height="9" rx="1.2"/><path d="M2.5 6.5h11"/>',
+    children: '<rect x="2.5" y="2.5" width="7" height="7" rx="1.2"/><rect x="6.5" y="6.5" width="7" height="7" rx="1.2"/>',
+    cross: '<rect x="2.5" y="3.5" width="4" height="9" rx="1"/><rect x="9.5" y="3.5" width="4" height="9" rx="1"/><path d="M7 8h2"/>',
+    dialog: '<rect x="2.5" y="3" width="11" height="8.5" rx="1.2"/><path d="M5.5 14l1.5-2.5"/>',
+    file: '<path d="M2.5 4.5h4l1.5 2h5.5v7h-11z"/>'
+};
+
+var NAV = [
+    { id: 'overview', name: '概览' },
+    { id: 'logger', name: '日志' },
+    { id: 'window', name: '当前窗口' },
+    { id: 'children', name: '子窗口' },
+    { id: 'cross', name: '跨窗口' },
+    { id: 'dialog', name: '弹窗' },
+    { id: 'file', name: '文件' }
+];
+
+function renderNav() {
+    var bar = $('sidebar');
+    bar.innerHTML = '';
+    for (var i = 0; i < NAV.length; i++) {
+        var item = NAV[i];
+        var node = el('div', 'nav-item' + (i === 0 ? ' active' : ''));
+        node.innerHTML = '<svg class="nav-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" '
+            + 'stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">' + ICONS[item.id] + '</svg>';
+        var span = el('span');
+        span.textContent = item.name;
+        node.appendChild(span);
+        node.setAttribute('data-panel', item.id);
+        node.onclick = onNavClick;
+        bar.appendChild(node);
+    }
+}
+
+function onNavClick() {
+    var id = this.getAttribute('data-panel');
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+        items[i].className = items[i].getAttribute('data-panel') === id ? 'nav-item active' : 'nav-item';
+    }
+    var panels = document.querySelectorAll('.panel');
+    for (var j = 0; j < panels.length; j++) {
+        panels[j].className = panels[j].id === ('panel-' + id) ? 'panel active' : 'panel';
+    }
+}
+
+function activatePanel(id) {
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].getAttribute('data-panel') === id) {
+            items[i].click();
+            return;
+        }
+    }
+}
+
+/* ====================================================================
+   卡片渲染
+   ==================================================================== */
+
+function renderCards(containerId, cards) {
+    var host = $(containerId);
+    if (!host) {
+        return;
+    }
+    for (var i = 0; i < cards.length; i++) {
+        host.appendChild(buildCard(cards[i]));
+    }
+}
+
+function buildCard(card) {
+    var node = el('section', 'card');
+    var head = el('div', 'card-head');
+    var title = el('span', 'card-title');
+    title.textContent = card.title;
+    head.appendChild(title);
+    if (card.desc) {
+        var desc = el('span', 'card-desc');
+        desc.textContent = card.desc;
+        head.appendChild(desc);
+    }
+    node.appendChild(head);
+    for (var i = 0; card.ops && i < card.ops.length; i++) {
+        node.appendChild(buildOp(card.ops[i]));
+    }
+    return node;
+}
+
+function buildOp(op) {
+    var row = el('div', 'op');
+
+    var main = el('div', 'op-main');
+    var name = el('code', 'op-name');
+    name.textContent = op.name;
+    main.appendChild(name);
+    if (op.desc) {
+        var desc = el('span', 'op-desc');
+        desc.textContent = op.desc;
+        main.appendChild(desc);
+    }
+    row.appendChild(main);
+
+    var ctrl = el('div', 'op-ctrl');
+    var inputs = {};
+
+    for (var i = 0; op.fields && i < op.fields.length; i++) {
+        var field = op.fields[i];
+        var label = el('label', 'field');
+        if (field.label) {
+            var span = el('span');
+            span.textContent = field.label;
+            label.appendChild(span);
+        }
+        var input = el('input', 'input');
+        input.type = field.type || 'text';
+        input.value = field.value === undefined ? '' : field.value;
+        input.style.width = (field.width || 160) + 'px';
+        label.appendChild(input);
+        ctrl.appendChild(label);
+        inputs[field.key] = input;
+    }
+
+    for (var k = 0; op.actions && k < op.actions.length; k++) {
+        ctrl.appendChild(buildAction(op, op.actions[k], inputs));
+    }
+
+    row.appendChild(ctrl);
+    return row;
+}
+
+function buildAction(op, action, inputs) {
+    var btn = el('button', 'btn' + (action.kind ? ' btn-' + action.kind : ''));
+    btn.textContent = action.label;
+    btn.onclick = function () {
+        if (!apiReady) {
+            log('warn', 'API 尚未就绪，请稍候再试');
+            return;
+        }
+        if (action.confirmText && !confirm(action.confirmText)) {
+            log('muted', '已取消：' + op.name);
+            return;
+        }
+        var values = {};
+        for (var key in inputs) {
+            if (inputs.hasOwnProperty(key)) {
+                values[key] = inputs[key].value;
+            }
+        }
+        safeCall(op.name + ' · ' + action.label, function () {
+            return action.run(values);
+        });
+        refreshAll();
+    };
+    return btn;
+}
+
+/* ====================================================================
+   目标窗口
+   ==================================================================== */
+
+var currentKey = null;
+
+/** 目标窗口 key：留空返回 null（框架内只有 null 表示主窗口，空串视为找不到窗口） */
+function target() {
+    var input = $('targetKey');
+    if (!input) {
+        return null;
+    }
+    var value = input.value.replace(/^\s+|\s+$/g, '');
+    return value === '' ? null : value;
+}
+
+function useCurrentKey() {
+    $('targetKey').value = currentKey === null ? '' : currentKey;
+    log('info', '目标窗口已设为当前窗口：' + (currentKey === null ? '主窗口（传 null）' : shortKey(currentKey)));
+}
+
+function syncTargetSelect() {
+    var select = $('targetSelect');
+    if (!select) {
+        return;
+    }
+    var current = select.value;
+    select.innerHTML = '';
+    var blank = el('option');
+    blank.value = '';
+    blank.textContent = '选择已创建的子窗口';
+    select.appendChild(blank);
+    for (var i = 0; i < children.length; i++) {
+        var opt = el('option');
+        opt.value = children[i].key;
+        opt.textContent = typeLabel[children[i].type] + ' · ' + shortKey(children[i].key);
+        select.appendChild(opt);
+    }
+    select.value = current;
+    select.onchange = function () {
+        if (select.value) {
+            $('targetKey').value = select.value;
+        }
+    };
+}
+
+/* ====================================================================
+   当前窗口属性表
+   kind: text / number / bool
+   ==================================================================== */
+
+var props = [
+    { key: 'title', label: '标题', kind: 'text', def: '新标题演示',
+      get: function () { return WindowApi.getTitle(); },
+      set: function (v) { WindowApi.setTitle(v); } },
+    { key: 'width', label: '宽度', kind: 'number', def: '1000',
+      get: function () { return WindowApi.getWidth(); },
+      set: function (v) { WindowApi.setWidth(Number(v)); } },
+    { key: 'height', label: '高度', kind: 'number', def: '700',
+      get: function () { return WindowApi.getHeight(); },
+      set: function (v) { WindowApi.setHeight(Number(v)); } },
+    { key: 'minWidth', label: '最小宽度', kind: 'number', def: '480',
+      get: function () { return WindowApi.getMinWidth(); },
+      set: function (v) { WindowApi.setMinWidth(Number(v)); } },
+    { key: 'minHeight', label: '最小高度', kind: 'number', def: '360',
+      get: function () { return WindowApi.getMinHeight(); },
+      set: function (v) { WindowApi.setMinHeight(Number(v)); } },
+    { key: 'resizable', label: '可调整大小', kind: 'bool',
+      get: function () { return WindowApi.getResizable(); },
+      set: function (v) { WindowApi.setResizable(v); } }
+];
+
+function renderProps() {
+    var body = $('propsBody');
+    body.innerHTML = '';
+    for (var i = 0; i < props.length; i++) {
+        body.appendChild(buildPropRow(props[i]));
+    }
+}
+
+function buildPropRow(prop) {
+    var tr = el('tr');
+
+    var nameTd = el('td');
+    nameTd.textContent = prop.label;
+    tr.appendChild(nameTd);
+
+    var valueTd = el('td');
+    var valueSpan = el('span', 'mono');
+    valueSpan.id = 'prop_' + prop.key;
+    valueSpan.textContent = '—';
+    valueTd.appendChild(valueSpan);
+    tr.appendChild(valueTd);
+
+    var inputTd = el('td');
+    var actionTd = el('td');
+
+    if (prop.kind === 'bool') {
+        inputTd.textContent = '—';
+        actionTd.appendChild(propButton('可调整', 'btn-sm', function () {
+            safeCall('setResizable(true)', function () { prop.set(true); });
+            refreshProps();
+        }));
+        actionTd.appendChild(propButton('固定', 'btn-sm', function () {
+            safeCall('setResizable(false)', function () { prop.set(false); });
+            refreshProps();
+        }));
+        actionTd.appendChild(propButton('读取', 'btn-sm', function () {
+            safeCall('getResizable()', prop.get);
+            refreshProps();
+        }));
+    } else {
+        var input = el('input', 'input');
+        input.type = prop.kind === 'number' ? 'number' : 'text';
+        input.value = prop.def;
+        input.style.width = '100px';
+        inputTd.appendChild(input);
+        actionTd.appendChild(propButton('读取', 'btn-sm', function () {
+            safeCall(prop.label + ' · 读取', prop.get);
+            refreshProps();
+        }));
+        actionTd.appendChild(propButton('设置', 'btn-sm btn-primary', function () {
+            safeCall(prop.label + ' · 设置', function () { prop.set(input.value); });
+            refreshProps();
+        }));
+    }
+
+    tr.appendChild(inputTd);
+    tr.appendChild(actionTd);
+    return tr;
+}
+
+function propButton(text, cls, handler) {
+    var btn = el('button', 'btn ' + cls);
+    btn.textContent = text;
+    btn.onclick = handler;
+    return btn;
+}
+
+function refreshProps() {
+    if (!apiReady) {
+        return;
+    }
+    for (var i = 0; i < props.length; i++) {
+        var cell = $('prop_' + props[i].key);
+        if (!cell) {
+            continue;
+        }
+        try {
+            var value = props[i].get();
+            if (value === null || value === undefined) {
+                cell.textContent = '—';
+            } else if (typeof value === 'boolean') {
+                cell.textContent = value ? '是' : '否';
+            } else if (typeof value === 'number') {
+                cell.textContent = String(Math.round(value));
+            } else {
+                cell.textContent = String(value);
+            }
+        } catch (e) {
+            cell.textContent = '—';
+        }
+    }
+}
+
+/* ====================================================================
+   状态刷新
+   ==================================================================== */
+
+function refreshAll() {
+    refreshHeader();
+    refreshStats();
+    refreshProps();
+}
+
+function refreshHeader() {
+    var roleTag = $('roleTag');
+    if (!roleTag) {
+        return;
+    }
+    if (!apiReady) {
+        roleTag.textContent = window['$controllerKey'] ? '子窗口' : '主窗口';
+        return;
+    }
+    roleTag.textContent = currentKey ? ('子窗口 · ' + shortKey(currentKey)) : '主窗口';
+}
+
+function refreshStats() {
+    if (!apiReady) {
+        currentKey = window['$controllerKey'] || null;
+    }
+    var stageKey = currentKey;
+    var parentKey = window['$parentControllerKey'] || null;
+
+    setText('statRole', stageKey ? '子窗口' : '主窗口');
+    setText('statKey', stageKey ? stageKey : '（主窗口为 null）');
+    setText('statParent', parentKey ? parentKey : '无');
+
+    if (!apiReady) {
+        setText('statSize', '—');
+        setText('statResizable', '—');
+        setText('statChildren', '—');
+        return;
+    }
+    try {
+        var w = WindowApi.getWidth();
+        var h = WindowApi.getHeight();
+        setText('statSize', Math.round(w) + ' × ' + Math.round(h));
+    } catch (e) {
+        setText('statSize', '—');
+    }
+    try {
+        setText('statResizable', WindowApi.getResizable() ? '是' : '否');
+    } catch (e) {
+        setText('statResizable', '—');
+    }
+    try {
+        var childKeys = toList(WindowApi.getChildKeys());
+        setText('statChildren', String(childKeys.length));
+    } catch (e) {
+        setText('statChildren', '—');
+    }
+}
+
+function setText(id, text) {
+    var node = $(id);
+    if (node) {
+        node.textContent = text;
+    }
+}
+
+/* ====================================================================
+   子窗口
+   ==================================================================== */
+
+function createChild(method, values) {
+    // 主窗口时父窗口为 null（框架内只有 null 表示主窗口）
+    var parentKey = currentKey;
+    var key = WindowApi[method](values.html, Number(values.w) || 900, Number(values.h) || 680, parentKey);
+    for (var i = 0; i < children.length; i++) {
+        if (children[i].key === key) {
+            renderChildren();
+            syncTargetSelect();
+            return key;
+        }
+    }
+    children.push({ key: key, type: method, status: '打开中' });
+    renderChildren();
+    syncTargetSelect();
+    $('targetKey').value = key;
+    return key;
+}
+
+/**
+ * 用后端子窗口列表校正本地表格数据。
+ *
+ * 表格里的 type/status 是前端本地元信息，但"有哪些子窗口"必须以后端 getChildKeys() 为准：
+ * 窗口可能是 Java 侧创建的、也可能是别的页面实例创建的，只看本地数组会漏。
+ */
+function reconcileChildren() {
+    if (!apiReady) {
+        return;
+    }
+    var keys;
+    try {
+        keys = toList(WindowApi.getChildKeys());
+    } catch (e) {
+        return;
+    }
+    var merged = [];
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        var known = null;
+        for (var j = 0; j < children.length; j++) {
+            if (children[j].key === key) {
+                known = children[j];
+                break;
+            }
+        }
+        merged.push(known || { key: key, type: 'extern', status: '就绪' });
+    }
+    children = merged;
+}
+
+function renderChildren() {
+    var body = $('childrenBody');
+    var hint = $('childrenHint');
+    if (!body) {
+        return;
+    }
+    reconcileChildren();
+    body.innerHTML = '';
+    if (children.length === 0) {
+        var emptyRow = el('tr');
+        var emptyCell = el('td');
+        emptyCell.className = 'empty';
+        emptyCell.colSpan = 4;
+        emptyCell.textContent = '暂无子窗口，点击上方「创建」按钮开始';
+        emptyRow.appendChild(emptyCell);
+        body.appendChild(emptyRow);
+        if (hint) {
+            hint.textContent = '暂无子窗口';
+        }
+        return;
+    }
+    if (hint) {
+        hint.textContent = '共 ' + children.length + ' 个';
+    }
+    for (var i = 0; i < children.length; i++) {
+        body.appendChild(buildChildRow(children[i]));
+    }
+}
+
+function buildChildRow(child) {
+    var tr = el('tr');
+
+    var typeTd = el('td');
+    typeTd.textContent = typeLabel[child.type] || child.type;
+    tr.appendChild(typeTd);
+
+    var keyTd = el('td', 'mono');
+    keyTd.textContent = child.key;
+    keyTd.title = child.key;
+    tr.appendChild(keyTd);
+
+    var statusTd = el('td', 'nowrap');
+    var tag = el('span', 'tag' + (child.status === '就绪' ? ' tag-success' : ''));
+    tag.textContent = child.status;
+    statusTd.appendChild(tag);
+    tr.appendChild(statusTd);
+
+    var actionTd = el('td', 'nowrap');
+    actionTd.appendChild(smallButton('设为目标', function () {
+        $('targetKey').value = child.key;
+        activatePanel('cross');
+        log('info', '目标窗口已设为 ' + shortKey(child.key));
+    }));
+    actionTd.appendChild(smallButton('复制', function () {
+        copyText(child.key);
+    }));
+    actionTd.appendChild(smallButton('隐藏', function () {
+        safeCall('hiddenWindowByControllerKey', function () {
+            WindowApi.hiddenWindowByControllerKey(child.key);
+        });
+    }));
+    actionTd.appendChild(smallButton('关闭', function () {
+        safeCall('closeWindowByControllerKey', function () {
+            WindowApi.closeWindowByControllerKey(child.key);
+        });
+    }));
+    tr.appendChild(actionTd);
+
+    return tr;
+}
+
+function smallButton(text, handler) {
+    var btn = el('button', 'btn btn-sm btn-text');
+    btn.textContent = text;
+    btn.onclick = handler;
+    return btn;
+}
+
+function copyText(text) {
+    var area = el('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try {
+        document.execCommand('copy');
+        log('info', '已复制到剪贴板：' + shortKey(text));
+    } catch (e) {
+        log('warn', '复制失败：' + e);
+    }
+    document.body.removeChild(area);
+}
+
+function removeChild(key) {
+    for (var i = 0; i < children.length; i++) {
+        if (children[i].key === key) {
+            children.splice(i, 1);
+            break;
+        }
+    }
+    renderChildren();
+    syncTargetSelect();
+}
+
+/* ====================================================================
+   快捷操作
+   ==================================================================== */
+
+function quickCreate(kind) {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，请稍候再试');
+        return;
+    }
+    var method = kind === 'modal' ? 'createApplicationScene' : 'createScene';
+    safeCall(method, function () {
+        return createChild(method, { html: 'web/api-demo.html', w: '900', h: '680' });
+    });
+}
+
+function quickAlert() {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，请稍候再试');
+        return;
+    }
+    alert('这是由框架 WebDialogHandler 渲染的提示');
+    log('info', 'alert 已弹出（TDesign 风格框架对话框）');
+}
+
+function quickCallback() {
+    safeCall('onCallAllStage', function () {
+        WindowApi.onCallAllStage('onGlobalCallback');
+    });
+}
+
+/** 打开 WindowApi 详细使用手册（逐方法示例 + 可运行代码） */
+function openWindowApiDemo() {
+    safeCall('openWindowApiDemo', function () {
+        return WindowApi.createChildScene('web/windowapi-demo.html', 1180, 820);
+    });
+}
+
+/* ====================================================================
+   各分组的方法清单（全部对照 WindowApi / LoggerApi 的真实签名）
+   ==================================================================== */
+
+var loggerCards = [{
+    title: '日志输出',
+    desc: 'LoggerApi · 每条日志自动带窗口 ID',
+    ops: [
+        { name: 'debug(msg)', desc: '调试级别',
+          fields: [{ key: 'msg', value: '这是一条调试日志', width: 280 }],
+          actions: [{ label: '调用', run: function (v) { LoggerApi.debug(v.msg); } }] },
+        { name: 'info(msg)', desc: '信息级别',
+          fields: [{ key: 'msg', value: '这是一条信息日志', width: 280 }],
+          actions: [{ label: '调用', kind: 'primary', run: function (v) { LoggerApi.info(v.msg); } }] },
+        { name: 'warn(msg)', desc: '警告级别',
+          fields: [{ key: 'msg', value: '这是一条警告日志', width: 280 }],
+          actions: [{ label: '调用', run: function (v) { LoggerApi.warn(v.msg); } }] },
+        { name: 'error(msg)', desc: '错误级别',
+          fields: [{ key: 'msg', value: '这是一条错误日志', width: 280 }],
+          actions: [{ label: '调用', kind: 'danger', run: function (v) { LoggerApi.error(v.msg); } }] }
+    ]
+}];
+
+var windowCards = [{
+    title: '窗口信息与行为',
+    desc: '无 key 参数，只作用于当前窗口',
+    ops: [
+        { name: 'getKey()', desc: '当前窗口 ControllerKey，主窗口返回 null',
+          actions: [{ label: '读取', run: function () { return WindowApi.getKey(); } }] },
+        { name: 'getParentKey()', desc: '当前窗口的父窗口 Key，无父窗口返回 null',
+          actions: [{ label: '读取', run: function () { return WindowApi.getParentKey(); } }] },
+        { name: 'getChildKeys()', desc: '当前窗口的全部子窗口 Key（String[]）',
+          actions: [{ label: '读取', run: function () { return WindowApi.getChildKeys(); } }] },
+        { name: 'hiddenWindow()', desc: '最小化到任务栏',
+          actions: [{ label: '最小化', run: function () { WindowApi.hiddenWindow(); } }] },
+        { name: 'closeWindow()', desc: '关闭当前窗口（主窗口会退出程序）',
+          actions: [{ label: '关闭窗口', kind: 'danger', confirmText: '确认关闭当前窗口吗？',
+                      run: function () { WindowApi.closeWindow(); } }] }
+    ]
+}];
+
+var childrenCards = [{
+    title: '创建子窗口',
+    desc: '父窗口自动取当前窗口（主窗口传 null）',
+    ops: [
+        { name: 'createScene(htmlPath, width, height, parentKey)', desc: '非模态子窗口',
+          fields: [
+              { key: 'html', value: 'web/api-demo.html', width: 200 },
+              { key: 'w', value: '900', type: 'number', width: 80 },
+              { key: 'h', value: '680', type: 'number', width: 80 }
+          ],
+          actions: [{ label: '创建', kind: 'primary', run: function (v) { return createChild('createScene', v); } }] },
+        { name: 'createWindowScene(htmlPath, width, height, parentKey)', desc: 'WINDOW_MODAL 模态窗口',
+          fields: [
+              { key: 'html', value: 'web/api-demo.html', width: 200 },
+              { key: 'w', value: '900', type: 'number', width: 80 },
+              { key: 'h', value: '680', type: 'number', width: 80 }
+          ],
+          actions: [{ label: '创建', run: function (v) { return createChild('createWindowScene', v); } }] },
+        { name: 'createApplicationScene(htmlPath, width, height, parentKey)', desc: 'APPLICATION_MODAL 模态窗口',
+          fields: [
+              { key: 'html', value: 'web/api-demo.html', width: 200 },
+              { key: 'w', value: '900', type: 'number', width: 80 },
+              { key: 'h', value: '680', type: 'number', width: 80 }
+          ],
+          actions: [{ label: '创建', run: function (v) { return createChild('createApplicationScene', v); } }] }
+    ]
+}];
+
+var crossCards = [{
+    title: '读取目标窗口属性',
+    desc: '目标窗口取上方输入框的 ControllerKey',
+    ops: [
+        { name: 'getTitleByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getTitleByControllerKey(target()); } }] },
+        { name: 'getWidthByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getWidthByControllerKey(target()); } }] },
+        { name: 'getHeightByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getHeightByControllerKey(target()); } }] },
+        { name: 'getMinWidthByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getMinWidthByControllerKey(target()); } }] },
+        { name: 'getMinHeightByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getMinHeightByControllerKey(target()); } }] },
+        { name: 'getResizableByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getResizableByControllerKey(target()); } }] }
+    ]
+}, {
+    title: '设置目标窗口属性',
+    desc: '修改标题/尺寸/最小尺寸/是否可调整',
+    ops: [
+        { name: 'setTitleByControllerKey(key, title)',
+          fields: [{ key: 'title', value: '子窗口标题', width: 200 }],
+          actions: [{ label: '设置', run: function (v) { WindowApi.setTitleByControllerKey(target(), v.title); } }] },
+        { name: 'setWidthByControllerKey(key, width)',
+          fields: [{ key: 'width', value: '800', type: 'number', width: 100 }],
+          actions: [{ label: '设置', run: function (v) { WindowApi.setWidthByControllerKey(target(), Number(v.width)); } }] },
+        { name: 'setHeightByControllerKey(key, height)',
+          fields: [{ key: 'height', value: '600', type: 'number', width: 100 }],
+          actions: [{ label: '设置', run: function (v) { WindowApi.setHeightByControllerKey(target(), Number(v.height)); } }] },
+        { name: 'setMinWidthByControllerKey(key, width)',
+          fields: [{ key: 'width', value: '420', type: 'number', width: 100 }],
+          actions: [{ label: '设置', run: function (v) { WindowApi.setMinWidthByControllerKey(target(), Number(v.width)); } }] },
+        { name: 'setMinHeightByControllerKey(key, height)',
+          fields: [{ key: 'height', value: '320', type: 'number', width: 100 }],
+          actions: [{ label: '设置', run: function (v) { WindowApi.setMinHeightByControllerKey(target(), Number(v.height)); } }] },
+        { name: 'setResizableByControllerKey(key, resizable)', desc: '返回是否设置成功',
+          actions: [
+              { label: '可调整', run: function () { return WindowApi.setResizableByControllerKey(target(), true); } },
+              { label: '固定大小', run: function () { return WindowApi.setResizableByControllerKey(target(), false); } }
+          ] }
+    ]
+}, {
+    title: '层级与生命周期',
+    desc: '查询父子关系、隐藏/关闭目标窗口',
+    ops: [
+        { name: 'getParentKeyByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getParentKeyByControllerKey(target()); } }] },
+        { name: 'getChildKeysByControllerKey(key)',
+          actions: [{ label: '读取', run: function () { return WindowApi.getChildKeysByControllerKey(target()); } }] },
+        { name: 'hiddenWindowByControllerKey(key)',
+          actions: [{ label: '最小化', run: function () { WindowApi.hiddenWindowByControllerKey(target()); } }] },
+        { name: 'closeWindowByControllerKey(key)', desc: 'key 为 null 时关闭主窗口（会退出程序）',
+          actions: [{ label: '关闭窗口', kind: 'danger', run: function () {
+              var key = target();
+              var tip = key ? ('确认关闭窗口 ' + shortKey(key) + ' 吗？')
+                            : '目标为 null（主窗口），关闭将退出程序，确认继续？';
+              if (!confirm(tip)) {
+                  return '已取消';
+              }
+              WindowApi.closeWindowByControllerKey(key);
+          } }] },
+        { name: 'onCallAllStage(callBack)', desc: '触发所有窗口的同名 JS 回调',
+          fields: [{ key: 'cb', value: 'onGlobalCallback', width: 200 }],
+          actions: [{ label: '触发', run: function (v) { WindowApi.onCallAllStage(v.cb); } }] }
+    ]
+}];
+
+var dialogCards = [{
+    title: '原生弹窗',
+    desc: 'alert / confirm / prompt 由框架 WebDialogHandler 接管，可在 app.yml 换实现或换肤',
+    ops: [
+        { name: 'alert(msg)',
+          fields: [{ key: 'msg', value: '这是一条框架弹窗提示', width: 280 }],
+          actions: [{ label: '弹窗', kind: 'primary', run: function (v) { alert(v.msg); } }] },
+        { name: 'confirm(msg)', desc: '同步返回 true / false',
+          fields: [{ key: 'msg', value: '确定要继续吗？', width: 280 }],
+          actions: [{ label: '弹窗', run: function (v) { return confirm(v.msg); } }] },
+        { name: 'prompt(msg, defaultValue)', desc: '取消返回 null',
+          fields: [
+              { key: 'msg', value: '请输入名称', width: 200 },
+              { key: 'def', value: '新建文件夹', width: 140 }
+          ],
+          actions: [{ label: '弹窗', run: function (v) { return prompt(v.msg, v.def); } }] }
+    ]
+}];
+
+var fileCards = [{
+    title: '目录操作',
+    desc: '调用系统文件能力，注意路径合法性',
+    ops: [
+        { name: 'openDir(path)', desc: '成功返回 null，失败返回错误信息',
+          fields: [{ key: 'path', value: 'C:\\', width: 240 }],
+          actions: [{ label: '打开', run: function (v) {
+              var err = WindowApi.openDir(v.path);
+              return err ? ('打开失败：' + err) : '已打开';
+          } }] },
+        { name: 'chooseDir(initDirPath)', desc: '取消返回 null',
+          fields: [{ key: 'path', value: 'C:\\', width: 240 }],
+          actions: [{ label: '选择目录', run: function (v) { return WindowApi.chooseDir(v.path); } }] },
+        { name: 'createDir(path)',
+          fields: [{ key: 'path', value: 'D:\\test-demo-dir', width: 240 }],
+          actions: [{ label: '创建', run: function (v) { return WindowApi.createDir(v.path); } }] },
+        { name: 'deleteFiles(path)',
+          fields: [{ key: 'path', value: 'D:\\test-demo-dir', width: 240 }],
+          actions: [{ label: '删除', kind: 'danger', confirmText: '确认删除该路径？操作不可撤销',
+                      run: function (v) { return WindowApi.deleteFiles(v.path); } }] }
+    ]
+}];
+
+/* ====================================================================
+   Java 侧回调（框架约定，方法名不可改）
+   ==================================================================== */
+
+window['$$_apiReady'] = function () {
+    apiReady = true;
+    $('apiTag').className = 'tag tag-success';
+    $('apiDot').className = 'dot dot-ok';
+    $('apiText').textContent = 'API 就绪';
+    log('success', '所有 Java API 已注入：WindowApi / LoggerApi');
+    try {
+        currentKey = WindowApi.getKey();
+    } catch (e) {
+        currentKey = window['$controllerKey'] || null;
+    }
+    refreshAll();
+};
+
+window['$$_onChildReady'] = function (childKey) {
+    for (var i = 0; i < children.length; i++) {
+        if (children[i].key === childKey) {
+            children[i].status = '就绪';
+        }
+    }
+    renderChildren();
+    log('info', '子窗口已就绪：' + shortKey(childKey));
+};
+
+window['$$_onChildClosed'] = function (childKey) {
+    removeChild(childKey);
+    log('warn', '子窗口已关闭：' + shortKey(childKey));
+};
+
+window.onGlobalCallback = function () {
+    log('info', '收到全体回调 onGlobalCallback（' + (currentKey ? '子窗口' : '主窗口') + '）');
+};
+
+/* ====================================================================
+   初始化
+   ==================================================================== */
+
+function init() {
+    renderNav();
+    renderCards('panel-logger', loggerCards);
+    renderCards('windowCards', windowCards);
+    renderCards('childrenCards', childrenCards);
+    renderCards('crossCards', crossCards);
+    renderCards('panel-dialog', dialogCards);
+    renderCards('panel-file', fileCards);
+    renderProps();
+    renderChildren();
+    syncTargetSelect();
+    currentKey = window['$controllerKey'] || null;
+    refreshAll();
+
+    log('muted', '页面已加载，等待 Java API 注入…');
+    setInterval(function () {
+        if (apiReady) {
+            refreshProps();
+            refreshStats();
+        }
+    }, 1500);
+}
+
+init();
+</script>
+</body>
+</html>

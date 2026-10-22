@@ -1,0 +1,44 @@
+# ===================================================================
+# spring-javafx 框架默认配置
+#
+# 该文件随框架 jar 分发，优先级最低：
+#   JVM 参数 / 环境变量  >  classpath:app.properties  >  classpath:app.yml  >  本文件
+#
+# 使用方只需在自己的 app.yml 中写需要覆盖的键，无需复制本文件。
+# ===================================================================
+
+app:
+  # 主窗口标题
+  name: spring-javafx
+
+  # 首页地址。支持 http(s)、file: 绝对路径、classpath 资源（如 web/index.html）
+  resourceUrl: web/index.html
+
+  # 进程退出码（主窗口关闭时使用）
+  exitCode: 0
+
+  # 窗口图标（文件系统路径；留空则使用框架内置图标）
+  # icon: /path/to/logo.png
+
+  # 以下尺寸留空时按主屏幕自动计算
+  # defaultWidth: 960
+  # defaultHeight: 600
+  # defaultMinWidth: 640
+  # defaultMinHeight: 480
+
+  # ------------------- 框架级对话框（alert / confirm / prompt / JS 错误）-------------------
+  dialog:
+    # 关闭后只记日志，不再弹窗
+    enabled: true
+    # 自定义处理器：bean 名称或全类名，留空则自动选择
+    handler:
+    # 默认标题与按钮文案
+    title: 提示
+    confirmText: 确定
+    cancelText: 取消
+    # 追加样式表（文件路径 / file: / classpath: / http）
+    stylesheet:
+    # 是否启用入场动画
+    animate: true
+    # JS 执行错误是否弹窗（默认只记日志）
+    jsErrorDialog: false

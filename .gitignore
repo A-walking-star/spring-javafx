@@ -1,0 +1,49 @@
+# ===================== 构建产物 =====================
+target/
+*.class
+*.jar
+!**/src/main/**/*.jar
+!**/src/test/**/*.jar
+
+# ===================== IDE =====================
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated
+.springBeans
+.sts4-cache
+.vscode/
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/dist/
+/.nb-gradle/
+build/
+
+# ===================== 本地运行产物 =====================
+logs/
+*.log
+/log
+*.hprof
+/importData
+/dataStorage
+/emailConfig.json
+
+# ===================== 仅供本地使用，不要提交 =====================
+# AI/助手工作目录（含本机路径、备份、预览图、ACL 恢复记录）
+.workbuddy/
+# 临时构建/探针目录
+.tmp-*/
+# 本地打包的 JDK / 启动脚本缓存
+cli/jdk-*/
+*.zip
+
+# ===================== 系统垃圾 =====================
+.DS_Store
+Thumbs.db
+desktop.ini

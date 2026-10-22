@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <!-- 定义日志根目录变量，可通过启动参数 -DLOG_PATH=/var/log 覆盖 -->
+    <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+
+    <!-- 控制台 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!--
+                控制台编码必须跟随"控制台代码页"，否则中文乱码：
+                  - Windows cmd 默认代码页 936(GBK) 时，JDK 会把 sun.stdout.encoding 置为 ms936，
+                    这里就按 GBK 写字节，控制台按 936 解码 → 正常；
+                  - 执行过 chcp 65001 的控制台，sun.stdout.encoding=UTF-8 → 正常；
+                  - 重定向到文件 / IDEA 控制台：该属性不存在，回落 UTF-8 → 正常。
+                写死 UTF-8 时，未 chcp 65001 的 cmd 会按 GBK 解码 UTF-8 字节，
+                于是出现"閰嶇疆瑁呴厤瀹屾垚"这种乱码。
+            -->
+            <charset>${sun.stdout.encoding:-UTF-8}</charset>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- INFO 按天+按大小滚动 -->
+    <appender name="ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/app.log</file>
+        <!-- 关键修正：使用 SizeAndTimeBasedRollingPolicy -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/app.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>  <!-- 总日志上限，防止磁盘撑满 -->
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ERROR 单独文件（生产推荐） -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+        <!-- 只记录 ERROR 级别 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- 异步包装（高并发时建议开启） -->
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="ROLLING"/>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC"/>
+        <appender-ref ref="ERROR_FILE"/>
+    </root>
+</configuration>

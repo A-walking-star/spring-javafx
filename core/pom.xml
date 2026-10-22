@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.cc3</groupId>
+        <artifactId>spring-javafx-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>spring-javafx</artifactId>
+    <packaging>jar</packaging>
+
+    <name>spring-javafx</name>
+    <description>
+        基于 Spring 容器与 JavaFX WebView 的桌面应用框架：用前端页面写界面，用 Spring 管理后端 Bean，
+        通过 JavaApiBridge 把 Java 能力暴露给 JavaScript。
+    </description>
+
+    <dependencies>
+        <!-- 容器：框架的内部实现细节，使用方无需感知 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- JSON 序列化（ObjectMapper）：JavaApiBridge 的通用能力 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- 日志门面：库只依赖 API，由使用方决定绑定哪个实现 -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!--
+            YAML 解析：框架默认配置（classpath:spring-javafx/defaults.yml）本身就是 yml，
+            且 spring-javafx/defaults.yml 无法在没有 snakeyaml 的情况下加载（实测会 NoClassDefFoundError），
+            因此这里必须是 compile 依赖，不能标 optional。
+            snakeyaml 无传递依赖，体积约 47KB；使用方如需换成自己的版本，在 dependencyManagement 中覆盖即可。
+        -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+
+        <!--
+            JSR-250 注解（javax.annotation.PostConstruct / @PreDestroy）：框架的窗口生命周期依赖它
+            （AppConfig 的兜底尺寸、主窗口 init() 打开窗口），Spring 5 在 JDK 11+ 上找不到
+            javax.annotation.Resource 时会静默不注册 CommonAnnotationBeanPostProcessor，
+            导致所有 @PostConstruct 不执行 —— 现象是"启动日志打完后再无输出、窗口不出现、无异常"。
+            因此这里必须是 compile 依赖，由框架替使用方保证（JDK 8 自带，多一份无害）。
+            注意必须用 1.3.x（javax.annotation 包）；2.x 已改名 jakarta.annotation，Spring 5 不识别。
+        -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+
+        <!-- 单元测试：不依赖 JavaFX 工具包（避免 headless 环境跑不起来） -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Implementation-Title>${project.artifactId}</Implementation-Title>
+                            <Implementation-Version>${project.version}</Implementation-Version>
+                            <Implementation-Vendor>cc3</Implementation-Vendor>
+                            <!-- 未提供 module-info 时的自动模块名，供 jlink/jpackage 使用方引用 -->
+                            <Automatic-Module-Name>com.cc3.springjavafx</Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!--
+            用 JDK 11+ 构建本模块时，javafx.* 不再由 JDK 提供（JDK 8 自带 jfxrt，本 profile 不激活）。
+            这里只是"编译期"依赖（provided + optional），不会传递给使用方 ——
+            使用方按 README 自行选择 openjfx 发行版与平台。
+            Linux/macOS 上构建请加 -Djavafx.platform=linux 或 mac。
+        -->
+        <profile>
+            <id>jdk11-plus-compile</id>
+            <activation>
+                <jdk>[11,)</jdk>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${javafx.platform}</classifier>
+                    <scope>provided</scope>
+                    <optional>true</optional>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${javafx.platform}</classifier>
+                    <scope>provided</scope>
+                    <optional>true</optional>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${javafx.platform}</classifier>
+                    <scope>provided</scope>
+                    <optional>true</optional>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-media</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${javafx.platform}</classifier>
+                    <scope>provided</scope>
+                    <optional>true</optional>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-web</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${javafx.platform}</classifier>
+                    <scope>provided</scope>
+                    <optional>true</optional>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
+</project>

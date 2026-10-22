@@ -1,0 +1,4 @@
+app:
+  # 测试专用：覆盖框架默认值（defaults.yml 里是 spring-javafx）
+  name: from-test-app-yml
+  defaultWidth: 1111

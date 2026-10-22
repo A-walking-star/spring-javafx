@@ -1,0 +1,8 @@
+app:
+  # 主窗口标题
+  name: spring-javafx
+  # 示例页面（相对于本模块 resources）
+  resourceUrl: web/api-demo.html
+  # 固定窗口尺寸，便于复现
+  defaultWidth: 1280
+  defaultHeight: 840

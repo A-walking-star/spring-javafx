@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.cc3</groupId>
+    <artifactId>spring-javafx-parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>spring-javafx-parent</name>
+    <description>JavaFX + Spring 桌面应用框架（聚合工程）</description>
+
+    <url>https://github.com/A-walking-star/spring-javafx</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>A-walking-star</id>
+            <name>A-walking-star</name>
+            <url>https://github.com/A-walking-star</url>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/A-walking-star/spring-javafx.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/A-walking-star/spring-javafx.git</developerConnection>
+        <url>https://github.com/A-walking-star/spring-javafx</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/A-walking-star/spring-javafx/issues</url>
+    </issueManagement>
+
+    <!--
+        发布目标：GitHub Packages（与代码同仓库，用同一个 GitHub PAT 即可，不需要 GPG 签名）。
+          mvn -Prelease deploy
+          settings.xml：<server><id>github</id><username>GitHub 用户名</username><password>PAT(需 write:packages)</password></server>
+
+        以后要发 Maven Central，把下面的 url 换成 OSSRH/Central 地址（id 改成 ossrh），
+        并加 -Pcentral 用 GPG 签名（见文末 central profile）：
+          https://oss.sonatype.org/service/local/staging/deploy/maven2/
+        公司 Nexus 同理，换成自己的 releases/snapshots 地址。
+    -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/A-walking-star/spring-javafx</url>
+        </repository>
+        <snapshotRepository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/A-walking-star/spring-javafx</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+
+    <modules>
+        <module>core</module>
+        <module>demo</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- JDK 8 基线：编译产物可在 8/11/17 上运行 -->
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
+        <spring.version>5.3.31</spring.version>
+        <jackson.version>2.14.2</jackson.version>
+        <javafx.version>11.0.2</javafx.version>
+        <!-- javafx 平台：win | linux | mac -->
+        <javafx.platform>win</javafx.platform>
+        <slf4j.version>1.7.36</slf4j.version>
+        <logback.version>1.2.12</logback.version>
+        <snakeyaml.version>1.33</snakeyaml.version>
+        <!-- JSR-250（javax.annotation.PostConstruct 等）：JDK 11+ 必须由 classpath 提供 -->
+        <jakarta-annotation.version>1.3.5</jakarta-annotation.version>
+        <!-- 单元测试（5.6.x 仍支持 Java 8；升级到 5.10+ 前请确认 JDK 8 兼容性） -->
+        <junit.version>5.6.3</junit.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.cc3</groupId>
+                <artifactId>spring-javafx</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-context</artifactId>
+                <version>${spring.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <!--
+                JSR-250 注解（javax.annotation.*）。JDK 11 起从 JDK 中移除，而 Spring 只有在
+                classpath 上能找到 javax.annotation.Resource 时才会注册
+                CommonAnnotationBeanPostProcessor —— 否则 @PostConstruct / @PreDestroy 被静默忽略：
+                主窗口 init() 不执行、窗口不显示、进程挂着且无异常（IDEA 里用 JDK 8 调试却正常）。
+                注意 1.3.x 才是 javax.annotation 包；2.x 改成了 jakarta.annotation，Spring 5 不识别。
+            -->
+            <dependency>
+                <groupId>jakarta.annotation</groupId>
+                <artifactId>jakarta.annotation-api</artifactId>
+                <version>${jakarta-annotation.version}</version>
+            </dependency>
+
+            <!-- JavaFX：JDK 8 以内置，JDK 11+ 需显式引入 -->
+            <dependency>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-base</artifactId>
+                <version>${javafx.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-controls</artifactId>
+                <version>${javafx.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-graphics</artifactId>
+                <version>${javafx.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-web</artifactId>
+                <version>${javafx.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <source>${maven.compiler.source}</source>
+                        <target>${maven.compiler.target}</target>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <configuration>
+                        <doclint>none</doclint>
+                        <encoding>UTF-8</encoding>
+                        <charset>UTF-8</charset>
+                        <docencoding>UTF-8</docencoding>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <profiles>
+        <!-- 发布用：sources/javadoc 附件只在显式 -Prelease 时生成，日常构建不需要 -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+            Maven Central 专用：GPG 签名（Central 会校验 .asc）。本机需装 gpg 且公钥已上传 keyserver。
+            GitHub Packages 不要求签名，所以单独放一个 profile —— 没有 gpg 时 -Prelease 不会失败。
+            用法：mvn -Prelease,central deploy（并先把 distributionManagement 换成 Central 地址）
+        -->
+        <profile>
+            <id>central</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

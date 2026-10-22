@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WindowApi 使用手册与示例 · spring-javafx</title>
+<style>
+    /* ==================================================================
+       WindowApi 演示页 · TDesign 风格（亮色）
+       颜色：品牌 #0052D9 / 成功 #2BA471 / 警告 #E37318 / 错误 #D54941
+       注意：JavaFX 8 的 WebKit 538 只支持 ES5，不支持 CSS 变量 / Grid / gap。
+       ================================================================== */
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+        font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        color: rgba(0, 0, 0, 0.9);
+        background: #F3F3F3;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    code, .mono { font-family: Consolas, Menlo, "Courier New", monospace; }
+
+    /* ------------------------------ 顶栏 ------------------------------ */
+
+    .app-header {
+        height: 56px;
+        flex: 0 0 56px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #E7E7E7;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+    }
+
+    .brand { display: flex; align-items: center; }
+
+    .brand-mark {
+        width: 28px; height: 28px;
+        border-radius: 6px;
+        background: #0052D9;
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 15px;
+        text-align: center;
+        line-height: 28px;
+        margin-right: 10px;
+    }
+
+    .brand-title { font-size: 15px; font-weight: 600; line-height: 20px; }
+    .brand-sub { font-size: 12px; color: rgba(0, 0, 0, 0.4); line-height: 16px; }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; }
+
+    .tag {
+        height: 22px;
+        line-height: 20px;
+        padding: 0 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.6);
+        background: #F3F3F3;
+        margin-left: 8px;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .tag-brand { color: #0052D9; background: #ECF2FE; }
+    .tag-success { color: #2BA471; background: #E8F8F2; }
+    .tag-warn { color: #E37318; background: #FFF1E9; }
+
+    .dot {
+        display: inline-block;
+        width: 6px; height: 6px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.26);
+        margin-right: 6px;
+        vertical-align: 1px;
+    }
+
+    .dot-ok { background: #2BA471; }
+
+    /* --------------------------- 目标窗口栏 --------------------------- */
+
+    .target-bar {
+        height: 46px;
+        flex: 0 0 46px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #E7E7E7;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+    }
+
+    .target-label { font-size: 12px; color: rgba(0, 0, 0, 0.6); margin-right: 8px; white-space: nowrap; }
+
+    .target-hint {
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.4);
+        margin-left: 4px;
+        white-space: nowrap;
+    }
+
+    /* ------------------------------ 布局 ------------------------------ */
+
+    .layout { flex: 1 1 auto; display: flex; min-height: 0; }
+
+    .sidebar {
+        width: 200px;
+        flex: 0 0 200px;
+        background: #FFFFFF;
+        border-right: 1px solid #E7E7E7;
+        padding: 8px;
+        overflow: auto;
+    }
+
+    .nav-item {
+        height: 34px;
+        line-height: 34px;
+        padding: 0 10px;
+        border-radius: 3px;
+        margin-bottom: 2px;
+        cursor: pointer;
+        color: rgba(0, 0, 0, 0.9);
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .nav-item:hover { background: #F3F3F3; }
+    .nav-item.active { background: #ECF2FE; color: #0052D9; font-weight: 600; }
+    .nav-icon { vertical-align: -2px; margin-right: 8px; }
+
+    .main { flex: 1 1 auto; overflow: auto; padding: 16px 20px 24px 20px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ------------------------------ 卡片 ------------------------------ */
+
+    .card {
+        background: #FFFFFF;
+        border-radius: 6px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .card-head { padding-bottom: 12px; border-bottom: 1px solid #F5F5F5; margin-bottom: 6px; }
+
+    .card-title { font-size: 15px; font-weight: 600; }
+
+    .card-desc { font-size: 12px; color: rgba(0, 0, 0, 0.4); margin-left: 8px; }
+
+    .intro {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.62);
+        line-height: 1.8;
+        padding: 2px 0 6px 0;
+    }
+
+    .intro b { color: rgba(0, 0, 0, 0.9); }
+
+    .intro code, .faq code, .notes code {
+        background: #F3F3F3;
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.9);
+    }
+
+    .notes { padding: 4px 0 0 18px; }
+    .notes li { font-size: 13px; color: rgba(0, 0, 0, 0.62); margin-bottom: 6px; line-height: 1.7; }
+
+    /* --------------------------- 操作条目 --------------------------- */
+
+    .demo-op { padding: 12px 0; border-bottom: 1px dashed #F0F0F0; }
+    .demo-op:last-child { border-bottom: none; padding-bottom: 2px; }
+
+    .demo-head { display: flex; flex-wrap: wrap; align-items: flex-start; }
+
+    .demo-main { flex: 1 1 320px; min-width: 260px; padding-right: 12px; }
+
+    .sig {
+        display: inline-block;
+        font-family: Consolas, Menlo, monospace;
+        font-size: 12px;
+        color: #0052D9;
+        background: #ECF2FE;
+        border-radius: 3px;
+        padding: 1px 6px;
+        word-break: break-all;
+    }
+
+    .demo-desc { font-size: 12px; color: rgba(0, 0, 0, 0.45); margin-left: 8px; }
+
+    .demo-ctrl { display: flex; flex-wrap: wrap; align-items: center; }
+
+    .field { display: inline-flex; align-items: center; margin: 0 8px 6px 0; }
+
+    .field > span { font-size: 12px; color: rgba(0, 0, 0, 0.55); margin-right: 6px; white-space: nowrap; }
+
+    .input {
+        height: 30px;
+        border: 1px solid #DCDCDC;
+        border-radius: 3px;
+        background: #FFFFFF;
+        color: rgba(0, 0, 0, 0.9);
+        font-size: 13px;
+        font-family: inherit;
+        padding: 0 10px;
+        outline: none;
+        margin-right: 8px;
+    }
+
+    .input:focus { border-color: #0052D9; }
+
+    input::-webkit-input-placeholder { color: rgba(0, 0, 0, 0.4); }
+
+    /* --------------------------- 按钮 --------------------------- */
+
+    .btn {
+        height: 30px;
+        padding: 0 14px;
+        border: none;
+        border-radius: 3px;
+        background: #F3F3F3;
+        color: rgba(0, 0, 0, 0.9);
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        margin-right: 8px;
+        margin-bottom: 6px;
+        outline: none;
+        white-space: nowrap;
+    }
+
+    .btn:hover { background: #EEEEEE; }
+    .btn-primary { background: #0052D9; color: #FFFFFF; }
+    .btn-primary:hover { background: #366EF4; }
+    .btn-danger { background: #D54941; color: #FFFFFF; }
+    .btn-danger:hover { background: #E5665E; }
+    .btn-sm { height: 24px; padding: 0 10px; font-size: 12px; }
+    .btn-text { background: transparent; color: #0052D9; padding: 0 6px; }
+    .btn-text:hover { background: #ECF2FE; }
+
+    /* --------------------------- 代码块 --------------------------- */
+
+    .demo-code {
+        position: relative;
+        margin-top: 8px;
+        background: #FAFAFA;
+        border: 1px solid #EEEEEE;
+        border-radius: 4px;
+        padding: 8px 10px;
+    }
+
+    .demo-code pre, pre.code {
+        font-family: Consolas, Menlo, "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: #333333;
+    }
+
+    .demo-code pre { margin: 0; padding-right: 46px; }
+
+    .copy-btn { position: absolute; top: 6px; right: 6px; }
+
+    pre.code {
+        margin-top: 8px;
+        background: #FAFAFA;
+        border: 1px solid #EEEEEE;
+        border-radius: 4px;
+        padding: 10px 12px;
+        color: #333333;
+    }
+
+    .demo-result { margin-top: 7px; font-size: 12px; color: rgba(0, 0, 0, 0.4); }
+
+    .result-value {
+        color: #0052D9;
+        background: #ECF2FE;
+        border-radius: 3px;
+        padding: 1px 6px;
+        word-break: break-all;
+    }
+
+    .result-ok { color: #2BA471; background: #E8F8F2; }
+    .result-err { color: #D54941; background: #FBE9E7; }
+
+    /* --------------------------- 概览 --------------------------- */
+
+    .stats { display: flex; flex-wrap: wrap; margin-bottom: 16px; }
+
+    .stat {
+        background: #FFFFFF;
+        border-radius: 6px;
+        padding: 12px 16px;
+        width: 190px;
+        flex: 0 0 190px;
+        margin: 0 12px 12px 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .stat-label { font-size: 12px; color: rgba(0, 0, 0, 0.4); margin-bottom: 3px; }
+
+    .stat-value { font-size: 14px; font-weight: 600; word-break: break-all; }
+
+    .quick { padding-top: 12px; }
+
+    /* --------------------------- 表格 --------------------------- */
+
+    .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    .tbl th {
+        text-align: left;
+        font-weight: 500;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.4);
+        background: #FAFAFA;
+        padding: 8px 12px;
+        border-bottom: 1px solid #E7E7E7;
+    }
+
+    .tbl td { padding: 9px 12px; border-bottom: 1px solid #F5F5F5; vertical-align: top; }
+
+    .tbl tr:last-child td { border-bottom: none; }
+
+    .tbl td.sig-cell {
+        font-family: Consolas, Menlo, monospace;
+        font-size: 12px;
+        color: #0052D9;
+        word-break: break-all;
+    }
+
+    .empty { color: rgba(0, 0, 0, 0.4); font-size: 13px; padding: 14px 0; }
+
+    .table-tools { padding: 12px 0 0 0; }
+
+    /* --------------------------- 表单 --------------------------- */
+
+    .form-row { display: flex; flex-wrap: wrap; align-items: center; padding: 7px 0; }
+    .form-row > label { font-size: 12px; color: rgba(0, 0, 0, 0.55); width: 110px; flex: 0 0 110px; }
+
+    .btn-row { padding-top: 10px; }
+
+    .hint { font-size: 12px; color: rgba(0, 0, 0, 0.4); padding-top: 8px; line-height: 1.7; }
+
+    /* --------------------------- 控制台 --------------------------- */
+
+    .console {
+        height: 180px;
+        flex: 0 0 180px;
+        background: #FFFFFF;
+        border-top: 1px solid #E7E7E7;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .console.collapsed { flex: 0 0 40px; height: 40px; }
+    .console.collapsed .console-body { display: none; }
+
+    .console-head {
+        height: 40px;
+        flex: 0 0 40px;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        border-bottom: 1px solid #F5F5F5;
+    }
+
+    .console-title { font-size: 13px; font-weight: 600; }
+    .console-actions { margin-left: auto; }
+
+    .console-body {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 8px 20px;
+        font-family: Consolas, Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.7;
+    }
+
+    .log-line { word-break: break-all; }
+    .log-time { color: rgba(0, 0, 0, 0.26); margin-right: 8px; }
+    .log-info { color: #0052D9; }
+    .log-success { color: #2BA471; }
+    .log-warn { color: #E37318; }
+    .log-error { color: #D54941; }
+    .log-muted { color: rgba(0, 0, 0, 0.4); }
+
+    /* --------------------------- 其他 --------------------------- */
+
+    .kbd {
+        display: inline-block;
+        border: 1px solid #DCDCDC;
+        border-bottom-width: 2px;
+        border-radius: 3px;
+        padding: 0 5px;
+        font-size: 12px;
+        font-family: Consolas, Menlo, monospace;
+        background: #FAFAFA;
+    }
+
+    .divider { height: 1px; background: #F0F0F0; margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+    <div class="brand">
+        <div class="brand-mark">W</div>
+        <div>
+            <div class="brand-title">WindowApi 使用手册</div>
+            <div class="brand-sub">从当前窗口到跨窗口控制 · 每个 API 都可直接运行</div>
+        </div>
+    </div>
+    <div class="header-right">
+        <span class="tag" id="roleTag">主窗口</span>
+        <span class="tag tag-brand" id="apiTag"><i class="dot" id="apiDot"></i><span id="apiText">等待 API 注入</span></span>
+    </div>
+</header>
+
+<div class="target-bar">
+    <span class="target-label">目标窗口（ByControllerKey 类 API）</span>
+    <input id="targetKey" class="input" style="width:310px;" placeholder="留空 = 主窗口（null），可粘贴/选择其它窗口 key">
+    <select id="targetSelect" class="input" style="width:250px;">
+        <option value="">主窗口（null）</option>
+    </select>
+    <button class="btn btn-sm" onclick="useCurrentAsTarget()">使用当前窗口</button>
+    <button class="btn btn-sm" onclick="refreshAll()">刷新列表</button>
+    <span class="target-hint" id="targetHint">留空表示主窗口（null）</span>
+</div>
+
+<div class="layout">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <main class="main">
+
+        <!-- ==================== 概览 ==================== -->
+        <section class="panel active" id="panel-overview">
+            <section class="card">
+                <div class="card-head"><span class="card-title">一分钟上手</span><span class="card-desc">页面里的每一步都可以直接点</span></div>
+                <div class="intro">
+                    框架在页面加载完成后把 <b>当前窗口专属</b>的 <code>window.WindowApi</code> 注入进来。
+                    不带 key 的方法都作用于<b>当前窗口</b>；需要操作别的窗口时，把它的
+                    <code>controllerKey</code> 传给 <code>xxxByControllerKey(...)</code>。
+                    本页打开的每个子窗口都持有自己独立的 <code>WindowApi</code>，所以同一段代码在父窗口执行和子窗口执行的效果不同。
+                </div>
+                <pre class="code">// 1. 必须等框架通知就绪（框架会在注入完成后调用一次）
+window['$$_apiReady'] = function () {
+
+    // 2. 当前窗口信息；主窗口的 key 是 null（不是空串）
+    var key       = WindowApi.getKey();
+    var parentKey = WindowApi.getParentKey();
+    var status    = WindowApi.getStatus();        // 例如 OPENED(已打开)
+
+    // 3. 打开子窗口（父窗口自动取当前窗口）
+    var childKey = WindowApi.createChildScene('web/windowapi-demo.html', 900, 680);
+
+    // 4. 改标题 / 尺寸 / 状态
+    WindowApi.setTitle('我的窗口');
+    WindowApi.setSize(1000, 700);
+    WindowApi.setMaximized(true);
+
+    // 5. 跨窗口操作：key 为 null 时表示主窗口
+    WindowApi.setTitleByControllerKey(key, '子窗口标题');
+    WindowApi.minimizeWindowByControllerKey(null);   // 最小化主窗口
+
+    // 6. 给子窗口发 JS 回调（子窗口里定义 window.onParentMessage）
+    WindowApi.onCallByControllerKey(childKey, 'onParentMessage');
+};</pre>
+                <div class="hint">
+                    提示：<code>WindowApi</code> 是完整 Java 对象，JS 能调用它的全部 public 方法；
+                    只应把它注入给随应用打包的可信页面，不要用它加载远程/用户提供的 HTML。
+                </div>
+            </section>
+
+            <div class="stats" id="statGrid">
+                <div class="stat"><div class="stat-label">窗口角色</div><div class="stat-value" id="stRole">—</div></div>
+                <div class="stat"><div class="stat-label">ControllerKey</div><div class="stat-value mono" id="stKey">—</div></div>
+                <div class="stat"><div class="stat-label">父窗口 key</div><div class="stat-value mono" id="stParent">—</div></div>
+                <div class="stat"><div class="stat-label">生命周期状态</div><div class="stat-value" id="stStatus">—</div></div>
+                <div class="stat"><div class="stat-label">窗口尺寸</div><div class="stat-value" id="stSize">—</div></div>
+                <div class="stat"><div class="stat-label">窗口位置</div><div class="stat-value" id="stPos">—</div></div>
+                <div class="stat"><div class="stat-label">可调整大小</div><div class="stat-value" id="stResizable">—</div></div>
+                <div class="stat"><div class="stat-label">最大化 / 全屏</div><div class="stat-value" id="stMaxFull">—</div></div>
+                <div class="stat"><div class="stat-label">总在最前</div><div class="stat-value" id="stTop">—</div></div>
+                <div class="stat"><div class="stat-label">不透明度</div><div class="stat-value" id="stOpacity">—</div></div>
+                <div class="stat"><div class="stat-label">子窗口数</div><div class="stat-value" id="stChildren">—</div></div>
+                <div class="stat"><div class="stat-label">应用窗口总数</div><div class="stat-value" id="stCount">—</div></div>
+            </div>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">快捷体验</span><span class="card-desc">不用切页，先感受一下</span></div>
+                <div class="quick">
+                    <button class="btn btn-primary" onclick="quickOpen('createChildScene')">打开普通子窗口</button>
+                    <button class="btn" onclick="quickOpen('createChildWindowScene')">打开 WINDOW_MODAL</button>
+                    <button class="btn" onclick="quickOpen('createChildApplicationScene')">打开 APPLICATION_MODAL</button>
+                    <button class="btn" onclick="quickPing()">触发全体回调</button>
+                    <button class="btn" onclick="quickAlert()">弹一个提示</button>
+                    <button class="btn" onclick="copyKey()">复制当前 key</button>
+                    <button class="btn btn-text" onclick="openPlayground()">打开功能演示页</button>
+                </div>
+                <div class="hint">
+                    模态窗口会阻塞它所拥有的窗口：<b>WINDOW_MODAL</b> 只阻塞 owner（这里是当前窗口），
+                    <b>APPLICATION_MODAL</b> 阻塞应用内全部窗口。非模态窗口不阻塞任何窗口。
+                </div>
+            </section>
+        </section>
+
+        <!-- ==================== 窗口信息 ==================== -->
+        <section class="panel" id="panel-info">
+            <section class="card">
+                <div class="card-head"><span class="card-title">先分清"当前窗口"和"指定窗口"</span></div>
+                <ul class="notes">
+                    <li>无 key 参数：<code>getTitle()</code>、<code>setWidth(...)</code>、<code>minimizeWindow()</code> —— 只操作加载本页的窗口。</li>
+                    <li>带 key 参数：<code>getTitleByControllerKey(key)</code>、<code>setWidthByControllerKey(key, w)</code> —— 操作指定窗口。</li>
+                    <li><b>只有 <code>null</code> 表示主窗口</b>；空串 <code>""</code> 或未知 key 都算"找不到窗口"（getter 返回 null、setter 返回 false）。</li>
+                    <li>每个窗口的 <code>WindowApi</code> 都是独立实例，所以子窗口里的 <code>getKey()</code> 返回子窗口自己的 key。</li>
+                    <li><code>getChildKeys()</code> / <code>getAllKeys()</code> 返回 <code>String[]</code>；元素是 Java String 包装对象，比较/序列化前请用 <code>String(keys[i])</code>。</li>
+                </ul>
+                <pre class="code">// String[] 的安全用法
+var raw = WindowApi.getChildKeys();
+var keys = [];
+for (var i = 0; i < raw.length; i++) {
+    keys.push(String(raw[i]));       // 不要直接 raw[i] === 'xxx'
+}
+// keys 现在是普通 JS 字符串数组，可以 join / 比较 / JSON.stringify</pre>
+            </section>
+            <div id="infoCards"></div>
+        </section>
+
+        <!-- ==================== 属性读写 ==================== -->
+        <section class="panel" id="panel-props">
+            <section class="card">
+                <div class="card-head"><span class="card-title">属性读写</span><span class="card-desc">全部作用于当前窗口</span></div>
+                <div class="intro">
+                    读方法在窗口不可用时返回安全默认值（<code>0</code> / <code>false</code> / <code>null</code>），不会抛 NPE；
+                    写方法会校验参数（宽度必须 &gt; 0，最小尺寸允许 0，透明度自动截断到 0~1），非法值只记日志、不生效。
+                </div>
+            </section>
+            <div id="propCards"></div>
+        </section>
+
+        <!-- ==================== 状态控制 ==================== -->
+        <section class="panel" id="panel-state">
+            <section class="card">
+                <div class="card-head"><span class="card-title">显示状态与窗口控制</span><span class="card-desc">最小化 / 最大化 / 全屏 / 置顶 / 关闭</span></div>
+                <div class="intro">
+                    <code>minimizeWindow()</code> 是最小化到任务栏，<code>restoreWindow()</code> 恢复并聚焦；
+                    <code>hiddenWindow()</code> 是旧名字，行为等同 <code>minimizeWindow()</code>。
+                    关闭窗口有两个版本：<code>closeWindow()</code> 强制关闭；<code>requestCloseWindow()</code>
+                    先触发 <code>WINDOW_CLOSE_REQUEST</code>，交给窗口自己的 <code>setOnCloseRequest</code> 做"未保存"确认，未被拦截才关闭。
+                </div>
+            </section>
+            <div id="stateCards"></div>
+        </section>
+
+        <!-- ==================== 位置与外观 ==================== -->
+        <section class="panel" id="panel-layout">
+            <section class="card">
+                <div class="card-head"><span class="card-title">位置与外观</span><span class="card-desc">坐标单位为屏幕像素，支持负值（多显示器）</span></div>
+                <div class="intro">
+                    <code>getX()/getY()</code> 是窗口左上角相对整个虚拟桌面的坐标。
+                    <code>centerOnScreen()</code> 会把窗口放到它所处屏幕的可见区域中央，
+                    多显示器时不会跑到主屏。
+                </div>
+            </section>
+            <div id="layoutCards"></div>
+        </section>
+
+        <!-- ==================== 创建窗口 ==================== -->
+        <section class="panel" id="panel-create">
+            <section class="card">
+                <div class="card-head"><span class="card-title">以当前窗口为父窗口开窗</span><span class="card-desc">最常用：不用自己拼 parentKey</span></div>
+                <div class="form-row">
+                    <label>页面路径</label>
+                    <input id="newHtml" class="input" style="width:360px;" value="web/windowapi-demo.html">
+                </div>
+                <div class="form-row">
+                    <label>宽度 / 高度</label>
+                    <input id="newW" class="input" type="number" style="width:100px;" value="920">
+                    <input id="newH" class="input" type="number" style="width:100px;" value="680">
+                    <span style="font-size:12px;color:rgba(0,0,0,.4);">宽度/高度传 null 或 0 时使用 app.defaultWidth / app.defaultHeight</span>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="createChild('createChildScene')">createChildScene（非模态）</button>
+                    <button class="btn" onclick="createChild('createChildWindowScene')">createChildWindowScene（WINDOW_MODAL）</button>
+                    <button class="btn" onclick="createChild('createChildApplicationScene')">createChildApplicationScene（APPLICATION_MODAL）</button>
+                </div>
+                <pre class="code">// 父窗口自动 = 当前窗口；主窗口调用时父窗口为 null
+var key = WindowApi.createChildScene('web/windowapi-demo.html', 920, 680);
+var modal = WindowApi.createChildWindowScene('web/confirm.html', 480, 320);</pre>
+                <div class="hint">
+                    模态窗口会阻塞父窗口的输入；WINDOW_MODAL 需要 owner（当前窗口），
+                    在 APPLICATION_MODAL 下所有窗口都会被阻塞。创建方法必须在 JavaFX 线程调用——前端调用天然满足。
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">显式指定父窗口</span><span class="card-desc">需要把窗口挂到别的窗口下时使用</span></div>
+                <div class="form-row">
+                    <label>页面路径</label>
+                    <input id="explHtml" class="input" style="width:360px;" value="web/windowapi-demo.html">
+                </div>
+                <div class="form-row">
+                    <label>宽度 / 高度</label>
+                    <input id="explW" class="input" type="number" style="width:100px;" value="900">
+                    <input id="explH" class="input" type="number" style="width:100px;" value="660">
+                </div>
+                <div class="form-row">
+                    <label>父窗口 key</label>
+                    <input id="explParent" class="input" style="width:340px;" placeholder="留空 = 主窗口（null）">
+                    <button class="btn btn-sm" onclick="fillExplicitParent()">填入当前窗口 key</button>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="createExplicit()">createScene(html, w, h, parentKey)</button>
+                </div>
+                <pre class="code">// 显式父窗口：null = 主窗口；空串 "" 不是主窗口，会导致窗口"孤儿化"
+var key = WindowApi.createScene('web/windowapi-demo.html', 900, 660, null);</pre>
+                <div class="hint">
+                    只有 <code>null</code> 表示主窗口。传空串或未知 key 时窗口仍会打开，但不会出现在任何窗口的
+                    <code>getChildKeys()</code> 里，也不会随父窗口关闭——框架会打印 WARN 提示。
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">三种模态怎么选</span></div>
+                <table class="tbl">
+                    <thead><tr><th style="width:240px;">方法</th><th style="width:130px;">Modality</th><th>行为</th></tr></thead>
+                    <tbody>
+                        <tr><td class="sig-cell">createChildScene</td><td>NONE</td><td>不阻塞任何窗口，父子关系仅体现在层级与随父关闭。</td></tr>
+                        <tr><td class="sig-cell">createChildWindowScene</td><td>WINDOW_MODAL</td><td>阻塞 owner（当前窗口），但应用内其它窗口仍可操作。</td></tr>
+                        <tr><td class="sig-cell">createChildApplicationScene</td><td>APPLICATION_MODAL</td><td>阻塞应用内所有窗口，适合登录、全局确认等场景。</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </section>
+
+        <!-- ==================== 子窗口 ==================== -->
+        <section class="panel" id="panel-children">
+            <section class="card">
+                <div class="card-head">
+                    <span class="card-title">当前窗口的子窗口</span>
+                    <span class="card-desc" id="childrenHint">数据来自 getChildKeys()</span>
+                </div>
+                <table class="tbl">
+                    <thead>
+                        <tr>
+                            <th style="width:280px;">ControllerKey</th>
+                            <th style="width:180px;">标题</th>
+                            <th style="width:150px;">状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="childrenBody"></tbody>
+                </table>
+                <div class="btn-row" style="padding-top:12px;">
+                    <button class="btn" onclick="refreshAll()">刷新列表</button>
+                    <button class="btn btn-danger" onclick="closeAllChildren()">关闭全部子窗口</button>
+                </div>
+                <div class="hint">
+                    窗口关闭时框架会销毁该窗口的桥接器并通知父窗口；父窗口页面实现
+                    <code>$$_onChildReady(childKey)</code>、<code>$$_onChildClosed(childKey)</code> 即可同步刷新。
+                </div>
+            </section>
+            <section class="card">
+                <div class="card-head"><span class="card-title">框架回调约定</span></div>
+                <pre class="code">// 框架在页面加载完成后调用一次（约 1 秒后，等所有桥接器注入完成）
+window['$$_apiReady'] = function () {
+    log('WindowApi 已就绪');
+};
+
+// 子窗口 page 就绪时，父窗口收到
+window['$$_onChildReady'] = function (childKey) {
+    refreshChildren();
+};
+
+// 子窗口关闭时，父窗口收到
+window['$$_onChildClosed'] = function (childKey) {
+    refreshChildren();
+};</pre>
+            </section>
+        </section>
+
+        <!-- ==================== 跨窗口 ==================== -->
+        <section class="panel" id="panel-cross">
+            <section class="card">
+                <div class="card-head"><span class="card-title">跨窗口操作约定</span></div>
+                <div class="intro">
+                    所有跨窗口方法都以 <code>ByControllerKey</code> 结尾，第一个参数是目标窗口的
+                    <code>controllerKey</code>。<b>用顶部目标栏指定目标</b>：留空表示主窗口（传 <code>null</code>），
+                    也可以从下拉框选择或粘贴子窗口 key。下面代码里的 <code>targetKey</code> 指的就是这个值。
+                </div>
+                <pre class="code">var targetKey = null;                 // null = 主窗口
+var title  = WindowApi.getTitleByControllerKey(targetKey);
+var width  = WindowApi.getWidthByControllerKey(targetKey);
+var exists = WindowApi.hasWindow(targetKey);
+
+WindowApi.setTitleByControllerKey(targetKey, '改个标题');
+WindowApi.setSizeByControllerKey(targetKey, 1024, 720);
+WindowApi.centerOnScreenByControllerKey(targetKey);</pre>
+            </section>
+            <div id="crossQueryCards"></div>
+            <div id="crossSetCards"></div>
+            <div id="crossStateCards"></div>
+        </section>
+
+        <!-- ==================== 回调 ==================== -->
+        <section class="panel" id="panel-callback">
+            <section class="card">
+                <div class="card-head"><span class="card-title">Java → 前端回调</span><span class="card-desc">本页已注册 demoPing / demoReceive</span></div>
+                <div class="intro">
+                    <code>onCallByControllerKey(key, name)</code> 只在目标窗口调用同名 JS 函数；
+                    <code>onCallAllStage(name)</code> 广播到所有存活窗口；
+                    <code>executeJsByControllerKey(key, script)</code> 可以执行任意 JS 表达式。
+                    回调统一用 <code>!!window['name'] &amp;&amp; window['name'](...)</code> 生成，目标窗口没有该函数时静默跳过，不会报错。
+                </div>
+                <pre class="code">// 当前页面注册回调
+window.demoPing = function () {
+    console.log('收到广播，当前窗口：' + WindowApi.getKey());
+};
+
+window.demoReceive = function (payload) {
+    console.log('收到参数：', payload);
+};
+
+// 父窗口触发子窗口
+WindowApi.onCallByControllerKey(childKey, 'demoPing');
+
+// 广播给所有窗口（含主窗口）
+WindowApi.onCallAllStage('demoPing');
+
+// 执行一段 JS（在目标窗口上下文里）
+WindowApi.executeJsByControllerKey(childKey, "alert('hi')");</pre>
+                <div class="hint">
+                    Java 侧发送回调用 <code>ParamsUtils.onCallBack(controller, "demoReceive", "hello", 42, true)</code>；
+                    String / Number / Boolean / null 会按原生类型传入，其它对象会序列化为 JSON 字符串，
+                    前端需要自己 <code>JSON.parse</code>。
+                </div>
+            </section>
+            <div id="callbackCards"></div>
+        </section>
+
+        <!-- ==================== 生命周期 ==================== -->
+        <section class="panel" id="panel-lifecycle">
+            <section class="card">
+                <div class="card-head"><span class="card-title">窗口生命周期</span></div>
+                <div class="intro">
+                    框架状态机：<code>INSTANCE → OPENING → OPENED → CLOSING → CLOSED → DESTROYED</code>；
+                    初始化失败会进入 <code>FAILED</code>。<code>isOpened()</code> 为 true 时窗口才真正可交互。
+                </div>
+                <pre class="code">var status = WindowApi.getStatus();          // "OPENED(已打开)"
+var opened = WindowApi.isOpened();           // true / false
+var exists = WindowApi.hasWindow(targetKey); // 目标窗口是否仍存活
+
+// 能走关闭确认时优先用 requestCloseWindow：
+// 窗口自己的 stage.setOnCloseRequest(e -&gt; { ... }) 可以先弹"未保存"确认，
+// 并调用 e.consume() 阻止关闭。
+WindowApi.requestCloseWindow();
+
+// 强制关闭（不会触发二次确认）；关闭主窗口后应用退出
+WindowApi.closeWindow();
+
+// 关闭当前窗口的全部子窗口，返回提交关闭的数量
+var n = WindowApi.closeChildWindows();</pre>
+                <div class="hint">
+                    关闭窗口是延迟执行的（投递到 JavaFX 事件队列），避免在 WebView 正在执行 JS 时销毁它的上下文；
+                    因此调用 <code>closeWindow()</code> 后当前脚本还能执行完。
+                </div>
+            </section>
+            <div id="lifecycleCards"></div>
+        </section>
+
+        <!-- ==================== 完整 API 参考 ==================== -->
+        <section class="panel" id="panel-reference">
+            <section class="card">
+                <div class="card-head"><span class="card-title">完整方法参考</span><span class="card-desc">与 core 中 WindowApi.java 的真实签名一一对应</span></div>
+                <div class="form-row">
+                    <label>过滤</label>
+                    <input id="apiFilter" class="input" style="width:360px;" placeholder="输入方法名关键字，例如 setSize / ByControllerKey / close">
+                </div>
+                <div class="hint">
+                    返回值 <code>Double</code> / <code>Boolean</code> 在找不到窗口时为 <code>null</code>，
+                    而当前窗口版本返回 <code>double</code> / <code>boolean</code> 的安全默认值。
+                    <code>ByControllerKey</code> 的写方法返回 <code>boolean</code>，表示目标窗口是否存在。
+                </div>
+            </section>
+            <div id="reference"></div>
+        </section>
+
+        <!-- ==================== Java 侧用法 ==================== -->
+        <section class="panel" id="panel-java">
+            <section class="card">
+                <div class="card-head"><span class="card-title">1. Java 侧打开窗口</span><span class="card-desc">ContextUtils</span></div>
+                <pre class="code">// 在 JavaFX 线程执行（例如主窗口 loadConfig()、按钮事件、Platform.runLater 内）
+// 主窗口的 getKey() 是 null，子窗口传自己的 getKey()
+String childKey = ContextUtils.createScene(
+        "web/windowapi-demo.html", 900, 680, getKey());
+
+// WINDOW_MODAL：必须给 owner
+String modalKey = ContextUtils.createWindowScene(
+        "web/confirm.html", 480, 320, getKey());
+
+// APPLICATION_MODAL：owner 可为 null
+String appModalKey = ContextUtils.createApplicationScene(
+        "web/login.html", 420, 300, null);
+
+// 按 key 取窗口 / Stage
+BaseController controller = ContextUtils.getController(childKey);
+Stage stage = ContextUtils.getStage(childKey);</pre>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">2. 自定义子窗口控制器</span><span class="card-desc">StageControllerFactory</span></div>
+                <pre class="code">@Component
+public class MyStageControllerFactory implements StageControllerFactory {
+
+    @Override
+    public GenericBeanDefinition create(String key, Stage stage, BaseController parent,
+                                        String url, double width, double height) {
+        GenericBeanDefinition def = new GenericBeanDefinition();
+        def.setBeanClass(MyChildController.class);   // 必须继承 BaseController
+        def.getConstructorArgumentValues().addGenericArgumentValue(key);
+        def.getConstructorArgumentValues().addGenericArgumentValue(stage);
+        def.getConstructorArgumentValues().addGenericArgumentValue(parent);
+        def.getPropertyValues().add("resourceUrl", url);
+        def.getPropertyValues().add("width", width);
+        def.getPropertyValues().add("height", height);
+        return def;
+    }
+}</pre>
+                <div class="hint">
+                    容器里出现任意自定义 <code>StageControllerFactory</code> 后，内置的
+                    <code>DefaultStageControllerFactory</code> 自动失效，所有
+                    <code>WindowApi.createXxxScene</code> 创建出来的窗口都会走你的控制器。
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">3. Java 调用前端方法</span><span class="card-desc">ParamsUtils.onCallBack</span></div>
+                <pre class="code">// controller 可以是 ContextUtils.getController(key)，也可以是任意 BaseController
+ParamsUtils.onCallBack(controller, "demoReceive", "hello", 42, true);
+
+// 前端：
+window.demoReceive = function (text, num, flag) {
+    console.log(text, num, flag);   // hello 42 true
+};</pre>
+                <div class="hint">
+                    参数编码：<code>String</code> 单引号转义、<code>Number/Boolean</code> 保留原生类型、
+                    <code>null</code> 原样传入；其它对象序列化为 JSON 字符串，前端需要
+                    <code>JSON.parse</code>。回调方法不存在时静默跳过。
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">4. 自定义前端 API</span><span class="card-desc">AbstractJavaApiBridge</span></div>
+                <pre class="code">@Component
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)   // 必须 prototype，每个窗口独立实例
+public class HelloApi extends AbstractJavaApiBridge {
+
+    public String hello(String name) {
+        return "Hello, " + name + "（来自窗口 " + getKey() + "）";
+    }
+
+    public boolean isMain() {
+        return getKey() == null;
+    }
+}
+
+// 前端：window.HelloApi.hello('World')</pre>
+                <div class="hint">
+                    命名空间默认取类名。窗口加载完成后框架会创建实例、调用
+                    <code>bindController(this)</code> 绑定当前窗口并注入 <code>window.HelloApi</code>，
+                    窗口关闭时自动销毁。注意不要写成单例，否则多个窗口会串台。
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">5. 常用 Java 工具</span></div>
+                <table class="tbl">
+                    <thead><tr><th style="width:330px;">方法</th><th>说明</th></tr></thead>
+                    <tbody>
+                        <tr><td class="sig-cell">ContextUtils.getController(key)</td><td>key 为 null 返回主窗口；找不到返回 null。</td></tr>
+                        <tr><td class="sig-cell">ContextUtils.getStage(key)</td><td>直接取 Stage；找不到返回 null。</td></tr>
+                        <tr><td class="sig-cell">ContextUtils.getAllController()</td><td>全部存活窗口控制器（Set）。</td></tr>
+                        <tr><td class="sig-cell">ContextUtils.closeController(key)</td><td>关闭并销毁指定窗口（会递归关闭子窗口）。</td></tr>
+                        <tr><td class="sig-cell">ParamsUtils.onCallBack(...)</td><td>Java 调用前端 JS 回调。</td></tr>
+                        <tr><td class="sig-cell">AppPathUtils.getAppDir()</td><td>jar / classes 所在目录，便于定位配置与日志。</td></tr>
+                    </tbody>
+                </table>
+            </section>
+        </section>
+
+        <!-- ==================== 注意事项 ==================== -->
+        <section class="panel" id="panel-faq">
+            <section class="card">
+                <div class="card-head"><span class="card-title">常见问题与踩坑点</span></div>
+
+                <div class="intro"><b>1. 为什么 getChildKeys()[0] === 'xxx' 是 false？</b></div>
+                <div class="intro">
+                    JavaFX WebView 返回的 <code>String[]</code> 是 JS 数组，但元素是 Java String 包装对象。
+                    统一用 <code>String(keys[i])</code> 转成原始字符串，或者 <code>keys.join(',').split(',')</code>。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>2. 主窗口的 key 是什么？为什么不能传 ""？</b></div>
+                <div class="intro">
+                    主窗口 <code>getKey()</code> 返回 <code>null</code>。框架里<b>只有 null 表示主窗口</b>；
+                    空串 <code>""</code> 和未知 key 一律当作"找不到窗口"。需要显式表示主窗口时传 <code>null</code>，
+                    不要用 <code>""</code>。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>3. 创建窗口时宽高传 null 会怎样？</b></div>
+                <div class="intro">
+                    <code>createXxxScene</code> 的参数是 <code>Double</code>，传 <code>null</code> / <code>0</code> / 负数
+                    都会回落到 <code>app.defaultWidth</code> / <code>app.defaultHeight</code>，不会 NPE。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>4. 模态窗口为什么没有阻塞？</b></div>
+                <div class="intro">
+                    模态需要 owner：<code>createWindowScene</code> 必须传父窗口 key；
+                    <code>createChildWindowScene</code> 自动取当前窗口。主窗口作为 owner 时，
+                    WINDOW_MODAL 会阻塞主窗口。创建窗口本身必须在 JavaFX 线程执行（前端调用天然满足）。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>5. closeWindow 和 requestCloseWindow 有什么区别？</b></div>
+                <div class="intro">
+                    <code>closeWindow()</code> 强制关闭，不触发 <code>setOnCloseRequest</code>；
+                    <code>requestCloseWindow()</code> 先发 <code>WINDOW_CLOSE_REQUEST</code>，
+                    窗口可以在处理器里 <code>event.consume()</code> 取消关闭，未取消才兜底关闭。
+                    关闭主窗口会让应用退出。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>6. 在后台线程调用 set 方法会怎样？</b></div>
+                <div class="intro">
+                    写操作会自动投递到 JavaFX 线程，按顺序异步生效；但读取属性、创建/选择窗口
+                    需要在 JavaFX 线程调用。前端 JS 调用天然都在 JavaFX 线程，可以"设置后立即读"。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>7. 全屏和置顶能同时开吗？</b></div>
+                <div class="intro">
+                    JavaFX 对 <code>fullScreen</code> 与 <code>alwaysOnTop</code> 同时为 true 的支持因平台而异。
+                    如果切换失败，先关闭另一个状态再试；框架会捕获并记录异常，不会中断页面。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>8. 为什么页面里不能用箭头函数 / let / 模板字符串？</b></div>
+                <div class="intro">
+                    JavaFX 8 自带的 WebKit 538 只支持 ES5。为了兼容 JDK 8 与 JDK 17 的 openjfx
+                    两种运行环境，示例统一使用 <code>var</code>、<code>function</code> 和字符串拼接。
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="intro"><b>9. WindowApi 安全吗？</b></div>
+                <div class="intro">
+                    <code>window.WindowApi</code> 是完整 Java 对象，JS 可以调用所有 public 方法
+                    （包括基类的 <code>getStage()</code>、<code>destroy()</code>）。只把它注入给
+                    随应用打包的可信 HTML；展示远程页面/用户 HTML 时请另开一个不注入桥接器的 WebView。
+                </div>
+            </section>
+        </section>
+
+    </main>
+</div>
+
+<footer class="console" id="console">
+    <div class="console-head">
+        <span class="console-title">调用日志</span>
+        <div class="console-actions">
+            <button class="btn btn-sm" onclick="clearLog()">清空</button>
+            <button class="btn btn-sm" id="consoleToggle" onclick="toggleConsole()">收起</button>
+        </div>
+    </div>
+    <div class="console-body" id="consoleBody"></div>
+</footer>
+
+<script>
+/* ====================================================================
+   全局状态
+   ==================================================================== */
+
+var apiReady = false;
+var currentKey = null;
+
+/* ====================================================================
+   基础工具（ES5）
+   ==================================================================== */
+
+function $(id) {
+    return document.getElementById(id);
+}
+
+function el(tag, cls) {
+    var node = document.createElement(tag);
+    if (cls) {
+        node.className = cls;
+    }
+    return node;
+}
+
+function nowStr() {
+    var d = new Date();
+    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+}
+
+function shortKey(key) {
+    if (!key) {
+        return '—';
+    }
+    return key.length > 10 ? key.substring(0, 10) + '…' : key;
+}
+
+function log(level, msg) {
+    var body = $('consoleBody');
+    if (!body) {
+        return;
+    }
+    var line = el('div', 'log-line');
+    var time = el('span', 'log-time');
+    time.textContent = nowStr();
+    var text = el('span', 'log-' + level);
+    text.textContent = msg;
+    line.appendChild(time);
+    line.appendChild(text);
+    body.appendChild(line);
+    while (body.childNodes.length > 300) {
+        body.removeChild(body.firstChild);
+    }
+    body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+    $('consoleBody').innerHTML = '';
+    log('muted', '日志已清空');
+}
+
+function toggleConsole() {
+    var panel = $('console');
+    if (panel.className.indexOf('collapsed') >= 0) {
+        panel.className = 'console';
+        $('consoleToggle').textContent = '收起';
+    } else {
+        panel.className = 'console collapsed';
+        $('consoleToggle').textContent = '展开';
+    }
+}
+
+/** Java 数组 / 集合 → 普通 JS 字符串数组 */
+function toList(value) {
+    var list = [];
+    if (value === null || value === undefined) {
+        return list;
+    }
+    try {
+        if (typeof value.length === 'number') {
+            for (var i = 0; i < value.length; i++) {
+                list.push(String(value[i]));
+            }
+            return list;
+        }
+        if (typeof value.iterator === 'function') {
+            var it = value.iterator();
+            while (it.hasNext()) {
+                list.push(String(it.next()));
+            }
+            return list;
+        }
+    } catch (e) {
+    }
+    return list;
+}
+
+/** Java 返回值 → 可读文本 */
+function fmt(value) {
+    if (value === null) {
+        return 'null';
+    }
+    if (value === undefined) {
+        return 'undefined';
+    }
+    if (typeof value === 'string') {
+        return value === '' ? '(空字符串)' : value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+    var list = toList(value);
+    if (list.length > 0 || (typeof value.length === 'number' && value.length === 0)) {
+        return '[' + list.join(', ') + ']';
+    }
+    return String(value);
+}
+
+function round1(value) {
+    if (typeof value !== 'number' || isNaN(value)) {
+        return '—';
+    }
+    return String(Math.round(value * 100) / 100);
+}
+
+function copyText(text) {
+    var area = el('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try {
+        document.execCommand('copy');
+        log('info', '已复制到剪贴板：' + shortKey(text));
+    } catch (e) {
+        log('warn', '复制失败：' + e);
+    }
+    document.body.removeChild(area);
+}
+
+function setText(id, text) {
+    var node = $(id);
+    if (node) {
+        node.textContent = text;
+    }
+}
+
+/* ====================================================================
+   导航
+   ==================================================================== */
+
+var ICONS = {
+    overview: '<rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1"/><rect x="9" y="9" width="4.5" height="4.5" rx="1"/>',
+    info: '<circle cx="8" cy="8" r="5.5"/><path d="M8 7.2v4M8 4.8v.2"/>',
+    props: '<rect x="2.5" y="3.5" width="11" height="9" rx="1.2"/><path d="M2.5 6.5h11"/>',
+    state: '<path d="M3 5h10M3 8h10M3 11h10"/>',
+    layout: '<rect x="2.5" y="3.5" width="11" height="9" rx="1.2"/><path d="M5.5 6h5v4h-5z"/>',
+    create: '<rect x="2.5" y="2.5" width="8" height="8" rx="1.2"/><path d="M12 8v5H7"/><path d="M10.5 10.5h4v4h-4z"/>',
+    children: '<rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.2"/><rect x="7" y="7" width="6.5" height="6.5" rx="1.2"/>',
+    cross: '<rect x="2.5" y="3.5" width="4" height="9" rx="1"/><rect x="9.5" y="3.5" width="4" height="9" rx="1"/><path d="M7 8h2"/>',
+    callback: '<path d="M3 4.5h10v7H3z"/><path d="M3 5l5 3.5L13 5"/>',
+    lifecycle: '<circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2.2 1.5"/>',
+    reference: '<path d="M3 3h10v10H3z"/><path d="M5 6h6M5 8.5h6M5 11h4"/>',
+    java: '<path d="M5.5 4.5L2.5 8l3 3.5M10.5 4.5L13.5 8l-3 3.5"/>',
+    faq: '<circle cx="8" cy="8" r="5.5"/><path d="M6.3 6.2c.2-1 1-1.6 2-1.6 1.1 0 1.9.7 1.9 1.7 0 1.4-2 1.4-2 2.7"/><path d="M8 11.4v.2"/>'
+};
+
+var NAV = [
+    { id: 'overview', name: '快速开始' },
+    { id: 'info', name: '窗口信息' },
+    { id: 'props', name: '属性读写' },
+    { id: 'state', name: '状态控制' },
+    { id: 'layout', name: '位置与外观' },
+    { id: 'create', name: '创建窗口' },
+    { id: 'children', name: '子窗口' },
+    { id: 'cross', name: '跨窗口' },
+    { id: 'callback', name: '回调' },
+    { id: 'lifecycle', name: '生命周期' },
+    { id: 'reference', name: 'API 全表' },
+    { id: 'java', name: 'Java 侧' },
+    { id: 'faq', name: '注意事项' }
+];
+
+function renderNav() {
+    var bar = $('sidebar');
+    bar.innerHTML = '';
+    for (var i = 0; i < NAV.length; i++) {
+        var item = NAV[i];
+        var node = el('div', 'nav-item' + (i === 0 ? ' active' : ''));
+        node.innerHTML = '<svg class="nav-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" '
+            + 'stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">' + ICONS[item.id] + '</svg>';
+        var span = el('span');
+        span.textContent = item.name;
+        node.appendChild(span);
+        node.setAttribute('data-panel', item.id);
+        node.onclick = onNavClick;
+        bar.appendChild(node);
+    }
+}
+
+function onNavClick() {
+    var id = this.getAttribute('data-panel');
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+        items[i].className = items[i].getAttribute('data-panel') === id ? 'nav-item active' : 'nav-item';
+    }
+    var panels = document.querySelectorAll('.panel');
+    for (var j = 0; j < panels.length; j++) {
+        panels[j].className = panels[j].id === ('panel-' + id) ? 'panel active' : 'panel';
+    }
+}
+
+function activatePanel(id) {
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+        if (items[i].getAttribute('data-panel') === id) {
+            items[i].click();
+            return;
+        }
+    }
+}
+
+/* ====================================================================
+   目标窗口
+   ==================================================================== */
+
+function target() {
+    var input = $('targetKey');
+    if (!input) {
+        return null;
+    }
+    var value = input.value.replace(/^\s+|\s+$/g, '');
+    return value === '' ? null : value;
+}
+
+function useCurrentAsTarget() {
+    $('targetKey').value = currentKey === null ? '' : currentKey;
+    log('info', '目标窗口已设为当前窗口：' + (currentKey === null ? '主窗口（null）' : shortKey(currentKey)));
+    refreshTargetHint();
+}
+
+function fillExplicitParent() {
+    $('explParent').value = currentKey === null ? '' : currentKey;
+}
+
+function refreshTargetHint() {
+    var input = $('targetKey');
+    var hint = $('targetHint');
+    if (!input || !hint || !apiReady) {
+        return;
+    }
+    var key = target();
+    if (key === null) {
+        hint.textContent = '当前目标：主窗口（null）';
+        return;
+    }
+    var exists = false;
+    try {
+        exists = WindowApi.hasWindow(key);
+    } catch (e) {
+    }
+    hint.textContent = exists ? ('当前目标：' + shortKey(key) + '（有效）')
+                              : ('当前目标：' + shortKey(key) + '（不存在）');
+}
+
+function syncTargetSelect() {
+    var select = $('targetSelect');
+    if (!select) {
+        return;
+    }
+    var current = select.value;
+    select.innerHTML = '';
+    var blank = el('option');
+    blank.value = '';
+    blank.textContent = '主窗口（null）';
+    select.appendChild(blank);
+
+    var keys = [];
+    if (apiReady) {
+        try {
+            keys = toList(WindowApi.getAllKeys());
+        } catch (e) {
+            keys = [];
+        }
+    }
+    for (var i = 0; i < keys.length; i++) {
+        var opt = el('option');
+        opt.value = keys[i];
+        var title = '';
+        try {
+            title = WindowApi.getTitleByControllerKey(keys[i]) || '';
+        } catch (e) {
+        }
+        opt.textContent = shortKey(keys[i]) + (title ? (' · ' + title) : '');
+        select.appendChild(opt);
+    }
+    select.value = current;
+    select.onchange = function () {
+        $('targetKey').value = select.value;
+        refreshTargetHint();
+    };
+}
+
+/* ====================================================================
+   卡片与操作条目渲染
+   ==================================================================== */
+
+function renderCards(hostId, cards) {
+    var host = $(hostId);
+    if (!host) {
+        return;
+    }
+    host.innerHTML = '';
+    for (var i = 0; i < cards.length; i++) {
+        host.appendChild(buildCard(cards[i]));
+    }
+}
+
+function buildCard(card) {
+    var node = el('section', 'card');
+    var head = el('div', 'card-head');
+    var title = el('span', 'card-title');
+    title.textContent = card.title;
+    head.appendChild(title);
+    if (card.desc) {
+        var desc = el('span', 'card-desc');
+        desc.textContent = card.desc;
+        head.appendChild(desc);
+    }
+    node.appendChild(head);
+    if (card.intro) {
+        var intro = el('div', 'intro');
+        intro.textContent = card.intro;
+        node.appendChild(intro);
+    }
+    for (var i = 0; card.ops && i < card.ops.length; i++) {
+        node.appendChild(buildOp(card.ops[i]));
+    }
+    return node;
+}
+
+function buildOp(op) {
+    var row = el('div', 'demo-op');
+
+    var head = el('div', 'demo-head');
+    var main = el('div', 'demo-main');
+    var sig = el('code', 'sig');
+    sig.textContent = op.api;
+    main.appendChild(sig);
+    if (op.desc) {
+        var desc = el('span', 'demo-desc');
+        desc.textContent = op.desc;
+        main.appendChild(desc);
+    }
+    head.appendChild(main);
+
+    var ctrl = el('div', 'demo-ctrl');
+    var inputs = {};
+    for (var i = 0; op.fields && i < op.fields.length; i++) {
+        var field = op.fields[i];
+        var label = el('label', 'field');
+        var span = el('span');
+        span.textContent = field.label || field.key;
+        label.appendChild(span);
+        var input = el('input', 'input');
+        input.type = field.type || 'text';
+        input.value = field.value === undefined ? '' : field.value;
+        input.style.width = (field.width || 140) + 'px';
+        label.appendChild(input);
+        ctrl.appendChild(label);
+        inputs[field.key] = input;
+    }
+
+    var result = el('div', 'demo-result');
+    var resultLabel = el('span');
+    resultLabel.textContent = '结果：';
+    var resultValue = el('span', 'result-value');
+    resultValue.textContent = '—';
+    result.appendChild(resultLabel);
+    result.appendChild(resultValue);
+
+    var actions = op.actions && op.actions.length > 0
+        ? op.actions
+        : [{ label: '运行', run: op.run }];
+
+    for (var k = 0; k < actions.length; k++) {
+        ctrl.appendChild(buildAction(op, actions[k], inputs, resultValue));
+    }
+
+    head.appendChild(ctrl);
+    row.appendChild(head);
+
+    if (op.code) {
+        row.appendChild(buildCodeBlock(op.code));
+    }
+    row.appendChild(result);
+    return row;
+}
+
+function buildCodeBlock(text) {
+    var box = el('div', 'demo-code');
+    var pre = el('pre');
+    pre.textContent = text;
+    box.appendChild(pre);
+    var btn = el('button', 'btn btn-sm btn-text copy-btn');
+    btn.textContent = '复制';
+    btn.onclick = function () {
+        copyText(text);
+    };
+    box.appendChild(btn);
+    return box;
+}
+
+function buildAction(op, action, inputs, resultValue) {
+    var btn = el('button', 'btn' + (action.kind ? ' btn-' + action.kind : ''));
+    btn.textContent = action.label;
+    btn.onclick = function () {
+        if (!apiReady) {
+            log('warn', 'API 尚未就绪，请稍候再试：' + op.api);
+            return;
+        }
+        if (action.confirm && !confirm(action.confirm)) {
+            log('muted', '已取消：' + op.api);
+            return;
+        }
+        var values = {};
+        for (var key in inputs) {
+            if (inputs.hasOwnProperty(key)) {
+                values[key] = inputs[key].value;
+            }
+        }
+        var label = op.api + (op.actions ? (' · ' + action.label) : '');
+        try {
+            var result = action.run(values);
+            if (result === undefined) {
+                resultValue.className = 'result-value result-ok';
+                resultValue.textContent = '✔ 已执行';
+                log('success', label + ' → 已执行');
+            } else {
+                resultValue.className = 'result-value';
+                resultValue.textContent = fmt(result);
+                log('success', label + ' → ' + fmt(result));
+            }
+        } catch (e) {
+            resultValue.className = 'result-value result-err';
+            resultValue.textContent = '✖ ' + (e && e.message ? e.message : e);
+            log('error', label + ' 异常：' + (e && e.message ? e.message : e));
+        }
+        refreshAll();
+    };
+    return btn;
+}
+
+/* ====================================================================
+   状态刷新
+   ==================================================================== */
+
+function refreshAll() {
+    refreshHeader();
+    refreshStats();
+    refreshChildren();
+    refreshTargetHint();
+    syncTargetSelect();
+}
+
+function refreshHeader() {
+    var roleTag = $('roleTag');
+    if (!roleTag) {
+        return;
+    }
+    if (!apiReady) {
+        roleTag.textContent = window['$controllerKey'] ? '子窗口' : '主窗口';
+        return;
+    }
+    roleTag.textContent = currentKey ? ('子窗口 · ' + shortKey(currentKey)) : '主窗口';
+}
+
+function readSafe(fn, fallback) {
+    try {
+        return fn();
+    } catch (e) {
+        return fallback;
+    }
+}
+
+function refreshStats() {
+    if (!apiReady) {
+        if (!currentKey) {
+            currentKey = window['$controllerKey'] || null;
+        }
+        setText('stRole', currentKey ? '子窗口' : '主窗口');
+        setText('stKey', currentKey || '（主窗口为 null）');
+        setText('stParent', window['$parentControllerKey'] || '—');
+        setText('stStatus', '等待 API');
+        return;
+    }
+
+    setText('stRole', currentKey === null ? '主窗口' : '子窗口');
+    setText('stKey', currentKey === null ? 'null（主窗口）' : currentKey);
+    setText('stParent', readSafe(function () { return WindowApi.getParentKey(); }, null) || '无父窗口（null）');
+    setText('stStatus', readSafe(function () { return WindowApi.getStatus(); }, '—'));
+
+    var w = readSafe(function () { return WindowApi.getWidth(); }, 0);
+    var h = readSafe(function () { return WindowApi.getHeight(); }, 0);
+    setText('stSize', (Math.round(w) || 0) + ' × ' + (Math.round(h) || 0));
+
+    var x = readSafe(function () { return WindowApi.getX(); }, 0);
+    var y = readSafe(function () { return WindowApi.getY(); }, 0);
+    setText('stPos', 'x=' + (Math.round(x) || 0) + ', y=' + (Math.round(y) || 0));
+
+    setText('stResizable', readSafe(function () { return WindowApi.getResizable(); }, false) ? '是' : '否');
+    setText('stMaxFull',
+        (readSafe(function () { return WindowApi.isMaximized(); }, false) ? '最大化' : '未最大化')
+        + ' / '
+        + (readSafe(function () { return WindowApi.isFullScreen(); }, false) ? '全屏' : '窗口'));
+    setText('stTop', readSafe(function () { return WindowApi.isAlwaysOnTop(); }, false) ? '是' : '否');
+    setText('stOpacity', round1(readSafe(function () { return WindowApi.getOpacity(); }, 1)));
+
+    var childrenCount = readSafe(function () { return toList(WindowApi.getChildKeys()).length; }, 0);
+    setText('stChildren', String(childrenCount));
+    setText('stCount', String(readSafe(function () { return WindowApi.getWindowCount(); }, 0)));
+
+    var roleTag = $('roleTag');
+    if (roleTag) {
+        roleTag.textContent = currentKey === null ? '主窗口' : ('子窗口 · ' + shortKey(currentKey));
+    }
+}
+
+/* ====================================================================
+   子窗口列表
+   ==================================================================== */
+
+function refreshChildren() {
+    var body = $('childrenBody');
+    if (!body) {
+        return;
+    }
+    var keys = [];
+    if (apiReady) {
+        keys = toList(readSafe(function () { return WindowApi.getChildKeys(); }, []));
+    }
+    body.innerHTML = '';
+
+    var hint = $('childrenHint');
+    if (hint) {
+        hint.textContent = apiReady ? ('共 ' + keys.length + ' 个') : '等待 API';
+    }
+
+    if (keys.length === 0) {
+        var emptyRow = el('tr');
+        var cell = el('td');
+        cell.className = 'empty';
+        cell.colSpan = 4;
+        cell.textContent = apiReady ? '暂无子窗口，点击"创建窗口"打开一个吧' : '等待 API 注入…';
+        emptyRow.appendChild(cell);
+        body.appendChild(emptyRow);
+        return;
+    }
+
+    for (var i = 0; i < keys.length; i++) {
+        body.appendChild(buildChildRow(keys[i]));
+    }
+}
+
+function buildChildRow(key) {
+    var tr = el('tr');
+
+    var keyTd = el('td', 'mono');
+    keyTd.textContent = key;
+    keyTd.title = key;
+    tr.appendChild(keyTd);
+
+    var titleTd = el('td');
+    titleTd.textContent = readSafe(function () { return WindowApi.getTitleByControllerKey(key); }, '') || '—';
+    tr.appendChild(titleTd);
+
+    var statusTd = el('td');
+    var tag = el('span', 'tag');
+    var status = readSafe(function () { return WindowApi.getStatusByControllerKey(key); }, '') || '—';
+    if (status.indexOf('OPENED') === 0) {
+        tag.className = 'tag tag-success';
+    }
+    tag.textContent = status;
+    statusTd.appendChild(tag);
+    tr.appendChild(statusTd);
+
+    var actionTd = el('td');
+    actionTd.appendChild(smallButton('设为目标', function () {
+        $('targetKey').value = key;
+        refreshTargetHint();
+        log('info', '目标窗口已设为 ' + shortKey(key));
+    }));
+    actionTd.appendChild(smallButton('聚焦', function () {
+        runQuick('showWindowByControllerKey', function () {
+            return WindowApi.showWindowByControllerKey(key);
+        });
+    }));
+    actionTd.appendChild(smallButton('最大化/还原', function () {
+        var max = readSafe(function () { return WindowApi.isMaximizedByControllerKey(key); }, false);
+        runQuick('setMaximizedByControllerKey', function () {
+            return WindowApi.setMaximizedByControllerKey(key, !max);
+        });
+    }));
+    actionTd.appendChild(smallButton('最小化', function () {
+        runQuick('minimizeWindowByControllerKey', function () {
+            return WindowApi.minimizeWindowByControllerKey(key);
+        });
+    }));
+    actionTd.appendChild(smallButton('关闭', function () {
+        if (!confirm('确认关闭子窗口 ' + shortKey(key) + ' 吗？')) {
+            return;
+        }
+        runQuick('closeWindowByControllerKey', function () {
+            WindowApi.closeWindowByControllerKey(key);
+        });
+    }));
+    tr.appendChild(actionTd);
+    return tr;
+}
+
+function smallButton(text, handler) {
+    var btn = el('button', 'btn btn-sm btn-text');
+    btn.textContent = text;
+    btn.onclick = handler;
+    return btn;
+}
+
+function runQuick(label, fn) {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，请稍候再试：' + label);
+        return;
+    }
+    try {
+        var result = fn();
+        log('success', label + (result === undefined ? ' → 已执行' : (' → ' + fmt(result))));
+    } catch (e) {
+        log('error', label + ' 异常：' + (e && e.message ? e.message : e));
+    }
+    refreshAll();
+}
+
+/* ====================================================================
+   快捷操作
+   ==================================================================== */
+
+function quickOpen(method) {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，请稍候再试');
+        return;
+    }
+    runQuick(method, function () {
+        return WindowApi[method]('web/windowapi-demo.html', 920, 680);
+    });
+    activatePanel('children');
+}
+
+function quickPing() {
+    runQuick('onCallAllStage', function () {
+        return WindowApi.onCallAllStage('demoPing');
+    });
+}
+
+function quickAlert() {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪，请稍候再试');
+        return;
+    }
+    alert('这是当前窗口的 key：' + (currentKey === null ? 'null（主窗口）' : currentKey));
+}
+
+function copyKey() {
+    copyText(currentKey === null ? 'null' : currentKey);
+}
+
+function openPlayground() {
+    runQuick('createChildScene(api-demo)', function () {
+        return WindowApi.createChildScene('web/api-demo.html', 1100, 760);
+    });
+}
+
+/* ====================================================================
+   创建窗口表单
+   ==================================================================== */
+
+function createChild(method) {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪');
+        return;
+    }
+    var html = $('newHtml').value;
+    var w = Number($('newW').value) || 0;
+    var h = Number($('newH').value) || 0;
+    runQuick(method, function () {
+        return WindowApi[method](html, w, h);
+    });
+    activatePanel('children');
+}
+
+function createExplicit() {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪');
+        return;
+    }
+    var html = $('explHtml').value;
+    var w = Number($('explW').value) || 0;
+    var h = Number($('explH').value) || 0;
+    var parent = $('explParent').value.replace(/^\s+|\s+$/g, '');
+    runQuick('createScene', function () {
+        return WindowApi.createScene(html, w, h, parent === '' ? null : parent);
+    });
+    activatePanel('children');
+}
+
+function closeAllChildren() {
+    if (!apiReady) {
+        log('warn', 'API 尚未就绪');
+        return;
+    }
+    if (!confirm('确认关闭当前窗口的全部子窗口吗？')) {
+        return;
+    }
+    runQuick('closeChildWindows', function () {
+        return WindowApi.closeChildWindows();
+    });
+}
+
+/* ====================================================================
+   各类操作数据
+   ==================================================================== */
+
+var infoCards = [{
+    title: '身份与层级',
+    desc: '无 key 参数 = 当前窗口',
+    ops: [
+        { api: 'getKey()', desc: '当前窗口 key；主窗口返回 null',
+          code: 'var key = WindowApi.getKey();',
+          run: function () { return WindowApi.getKey(); } },
+        { api: 'isMainWindow()', desc: '是否是主窗口',
+          code: 'var isMain = WindowApi.isMainWindow();',
+          run: function () { return WindowApi.isMainWindow(); } },
+        { api: 'getParentKey()', desc: '父窗口 key；无父窗口返回 null',
+          code: 'var parentKey = WindowApi.getParentKey();',
+          run: function () { return WindowApi.getParentKey(); } },
+        { api: 'getStatus()', desc: '生命周期状态，例如 OPENED(已打开)',
+          code: 'var status = WindowApi.getStatus();',
+          run: function () { return WindowApi.getStatus(); } },
+        { api: 'isOpened()', desc: '窗口是否已显示且页面已加载',
+          code: 'var opened = WindowApi.isOpened();',
+          run: function () { return WindowApi.isOpened(); } },
+        { api: 'getChildKeys()', desc: '当前窗口的直接子窗口（String[]）',
+          code: 'var raw = WindowApi.getChildKeys();\nvar keys = [];\nfor (var i = 0; i < raw.length; i++) { keys.push(String(raw[i])); }',
+          run: function () { return WindowApi.getChildKeys(); } },
+        { api: 'getAllKeys()', desc: '应用内全部普通窗口（不含主窗口）',
+          code: 'var all = WindowApi.getAllKeys();   // String[]，不含主窗口',
+          run: function () { return WindowApi.getAllKeys(); } },
+        { api: 'getWindowCount()', desc: '应用内窗口总数（含主窗口）',
+          code: 'var count = WindowApi.getWindowCount();',
+          run: function () { return WindowApi.getWindowCount(); } }
+    ]
+}, {
+    title: '查询任意窗口',
+    desc: '目标窗口取顶部目标栏；留空 = 主窗口（null）',
+    ops: [
+        { api: 'hasWindow(controllerKey)', desc: '目标窗口是否存在且存活',
+          code: 'var exists = WindowApi.hasWindow(targetKey);',
+          run: function () { return WindowApi.hasWindow(target()); } },
+        { api: 'getStatusByControllerKey(key)', desc: '目标窗口生命周期状态',
+          code: 'var status = WindowApi.getStatusByControllerKey(targetKey);',
+          run: function () { return WindowApi.getStatusByControllerKey(target()); } },
+        { api: 'isOpenedByControllerKey(key)', desc: '目标窗口是否已就绪',
+          code: 'var opened = WindowApi.isOpenedByControllerKey(targetKey);',
+          run: function () { return WindowApi.isOpenedByControllerKey(target()); } },
+        { api: 'getParentKeyByControllerKey(key)', desc: '目标窗口的父窗口',
+          code: 'var parent = WindowApi.getParentKeyByControllerKey(targetKey);',
+          run: function () { return WindowApi.getParentKeyByControllerKey(target()); } },
+        { api: 'getChildKeysByControllerKey(key)', desc: '目标窗口的子窗口列表',
+          code: 'var children = WindowApi.getChildKeysByControllerKey(targetKey);',
+          run: function () { return WindowApi.getChildKeysByControllerKey(target()); } }
+    ]
+}];
+
+var propCards = [{
+    title: '标题',
+    ops: [
+        { api: 'getTitle()', desc: '读取当前窗口标题',
+          code: 'var title = WindowApi.getTitle();',
+          run: function () { return WindowApi.getTitle(); } },
+        { api: 'setTitle(title)', desc: '设置标题；null 视为空串',
+          fields: [{ key: 'title', value: 'WindowApi 演示窗口', width: 220 }],
+          code: "WindowApi.setTitle('WindowApi 演示窗口');",
+          run: function (v) { WindowApi.setTitle(v.title); } }
+    ]
+}, {
+    title: '尺寸',
+    ops: [
+        { api: 'getWidth() / getHeight()', desc: '读取当前窗口尺寸',
+          code: 'var w = WindowApi.getWidth();\nvar h = WindowApi.getHeight();',
+          run: function () { return WindowApi.getWidth() + ' × ' + WindowApi.getHeight(); } },
+        { api: 'setWidth(width)', desc: '宽度必须大于 0；非法值只记日志',
+          fields: [{ key: 'w', value: '1000', type: 'number', width: 100 }],
+          code: 'WindowApi.setWidth(1000);',
+          run: function (v) { WindowApi.setWidth(Number(v.w)); } },
+        { api: 'setHeight(height)', desc: '高度必须大于 0；非法值只记日志',
+          fields: [{ key: 'h', value: '720', type: 'number', width: 100 }],
+          code: 'WindowApi.setHeight(720);',
+          run: function (v) { WindowApi.setHeight(Number(v.h)); } },
+        { api: 'setSize(width, height)', desc: '一次设置宽高，避免中间布局',
+          fields: [
+              { key: 'w', label: '宽', value: '1000', type: 'number', width: 100 },
+              { key: 'h', label: '高', value: '720', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setSize(1000, 720);',
+          run: function (v) { WindowApi.setSize(Number(v.w), Number(v.h)); } }
+    ]
+}, {
+    title: '最小尺寸',
+    desc: '0 表示不限制',
+    ops: [
+        { api: 'getMinWidth() / getMinHeight()', desc: '读取最小尺寸',
+          code: 'var minW = WindowApi.getMinWidth();\nvar minH = WindowApi.getMinHeight();',
+          run: function () { return WindowApi.getMinWidth() + ' × ' + WindowApi.getMinHeight(); } },
+        { api: 'setMinWidth(width)', desc: '最小宽度；负数/NaN 不生效',
+          fields: [{ key: 'w', value: '480', type: 'number', width: 100 }],
+          code: 'WindowApi.setMinWidth(480);',
+          run: function (v) { WindowApi.setMinWidth(Number(v.w)); } },
+        { api: 'setMinHeight(height)', desc: '最小高度；负数/NaN 不生效',
+          fields: [{ key: 'h', value: '360', type: 'number', width: 100 }],
+          code: 'WindowApi.setMinHeight(360);',
+          run: function (v) { WindowApi.setMinHeight(Number(v.h)); } },
+        { api: 'setMinSize(width, height)', desc: '一次设置最小宽高',
+          fields: [
+              { key: 'w', label: '宽', value: '480', type: 'number', width: 100 },
+              { key: 'h', label: '高', value: '360', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setMinSize(480, 360);',
+          run: function (v) { WindowApi.setMinSize(Number(v.w), Number(v.h)); } }
+    ]
+}, {
+    title: '可调整大小 / 不透明度',
+    ops: [
+        { api: 'getResizable()', desc: '是否允许拖拽改变大小',
+          code: 'var resizable = WindowApi.getResizable();',
+          run: function () { return WindowApi.getResizable(); } },
+        { api: 'setResizable(resizable)', desc: '切换是否允许调整大小',
+          code: 'WindowApi.setResizable(false);',
+          actions: [
+              { label: '可调整', kind: 'primary', run: function () { WindowApi.setResizable(true); } },
+              { label: '固定大小', run: function () { WindowApi.setResizable(false); } }
+          ] },
+        { api: 'getOpacity()', desc: '窗口不透明度 0.0 ~ 1.0',
+          code: 'var opacity = WindowApi.getOpacity();',
+          run: function () { return WindowApi.getOpacity(); } },
+        { api: 'setOpacity(opacity)', desc: '超出范围会自动截断',
+          fields: [{ key: 'o', value: '0.85', type: 'number', width: 100 }],
+          code: 'WindowApi.setOpacity(0.85);',
+          run: function (v) { WindowApi.setOpacity(Number(v.o)); } }
+    ]
+}];
+
+var stateCards = [{
+    title: '查询当前状态',
+    ops: [
+        { api: 'isShowing()', desc: '窗口是否正在显示',
+          code: 'var showing = WindowApi.isShowing();',
+          run: function () { return WindowApi.isShowing(); } },
+        { api: 'isIconified()', desc: '是否已最小化',
+          code: 'var iconified = WindowApi.isIconified();',
+          run: function () { return WindowApi.isIconified(); } },
+        { api: 'isMaximized()', desc: '是否最大化',
+          code: 'var maximized = WindowApi.isMaximized();',
+          run: function () { return WindowApi.isMaximized(); } },
+        { api: 'isFullScreen()', desc: '是否全屏',
+          code: 'var full = WindowApi.isFullScreen();',
+          run: function () { return WindowApi.isFullScreen(); } },
+        { api: 'isAlwaysOnTop()', desc: '是否总在最前',
+          code: 'var top = WindowApi.isAlwaysOnTop();',
+          run: function () { return WindowApi.isAlwaysOnTop(); } }
+    ]
+}, {
+    title: '最小化 / 恢复 / 聚焦',
+    ops: [
+        { api: 'minimizeWindow()', desc: '最小化到任务栏',
+          code: 'WindowApi.minimizeWindow();',
+          actions: [{ label: '最小化', kind: 'primary', run: function () { WindowApi.minimizeWindow(); } }] },
+        { api: 'hiddenWindow()', desc: '旧名字，等同 minimizeWindow()',
+          code: 'WindowApi.hiddenWindow();   // 兼容旧代码',
+          actions: [{ label: '最小化', run: function () { WindowApi.hiddenWindow(); } }] },
+        { api: 'restoreWindow()', desc: '从最小化恢复并聚焦',
+          code: 'WindowApi.restoreWindow();',
+          actions: [{ label: '恢复', run: function () { WindowApi.restoreWindow(); } }] },
+        { api: 'showWindow()', desc: '确保窗口显示并前置（必要时重新 show）',
+          code: 'WindowApi.showWindow();',
+          actions: [{ label: '显示并前置', run: function () { WindowApi.showWindow(); } }] },
+        { api: 'toFront()', desc: '只置顶并请求焦点',
+          code: 'WindowApi.toFront();',
+          actions: [{ label: '置顶', run: function () { WindowApi.toFront(); } }] }
+    ]
+}, {
+    title: '最大化 / 全屏 / 置顶',
+    ops: [
+        { api: 'setMaximized(maximized)', desc: '设置是否最大化',
+          code: 'WindowApi.setMaximized(true);',
+          actions: [
+              { label: '最大化', kind: 'primary', run: function () { WindowApi.setMaximized(true); } },
+              { label: '还原', run: function () { WindowApi.setMaximized(false); } }
+          ] },
+        { api: 'toggleMaximized()', desc: '最大化 / 还原切换',
+          code: 'WindowApi.toggleMaximized();',
+          actions: [{ label: '切换', run: function () { WindowApi.toggleMaximized(); } }] },
+        { api: 'setFullScreen(fullScreen)', desc: '进入/退出全屏',
+          code: 'WindowApi.setFullScreen(true);',
+          actions: [
+              { label: '进入全屏', run: function () { WindowApi.setFullScreen(true); } },
+              { label: '退出全屏', run: function () { WindowApi.setFullScreen(false); } }
+          ] },
+        { api: 'toggleFullScreen()', desc: '全屏 / 窗口切换',
+          code: 'WindowApi.toggleFullScreen();',
+          actions: [{ label: '切换', run: function () { WindowApi.toggleFullScreen(); } }] },
+        { api: 'setAlwaysOnTop(alwaysOnTop)', desc: '窗口总在最前',
+          code: 'WindowApi.setAlwaysOnTop(true);',
+          actions: [
+              { label: '置顶', run: function () { WindowApi.setAlwaysOnTop(true); } },
+              { label: '取消置顶', run: function () { WindowApi.setAlwaysOnTop(false); } }
+          ] }
+    ]
+}, {
+    title: '关闭',
+    ops: [
+        { api: 'requestCloseWindow()', desc: '推荐：触发关闭请求，可被 setOnCloseRequest 拦截',
+          code: 'WindowApi.requestCloseWindow();',
+          actions: [{ label: '请求关闭', kind: 'danger',
+                      confirm: '确认触发当前窗口的关闭请求吗？主窗口关闭会退出应用。',
+                      run: function () { WindowApi.requestCloseWindow(); } }] },
+        { api: 'closeWindow()', desc: '强制关闭，不触发关闭确认',
+          code: 'WindowApi.closeWindow();',
+          actions: [{ label: '强制关闭', kind: 'danger',
+                      confirm: '确认强制关闭当前窗口吗？主窗口关闭会退出应用，未保存内容会丢失。',
+                      run: function () { WindowApi.closeWindow(); } }] },
+        { api: 'closeChildWindows()', desc: '关闭当前窗口的全部子窗口，返回数量',
+          code: 'var closed = WindowApi.closeChildWindows();',
+          actions: [{ label: '全部关闭', kind: 'danger',
+                      confirm: '确认关闭当前窗口的全部子窗口吗？',
+                      run: function () { return WindowApi.closeChildWindows(); } }] }
+    ]
+}];
+
+var layoutCards = [{
+    title: '坐标',
+    ops: [
+        { api: 'getX() / getY()', desc: '窗口左上角坐标',
+          code: 'var x = WindowApi.getX();\nvar y = WindowApi.getY();',
+          run: function () { return 'x=' + round1(WindowApi.getX()) + ', y=' + round1(WindowApi.getY()); } },
+        { api: 'setX(x)', desc: '设置左上角 X（支持负值）',
+          fields: [{ key: 'x', value: '100', type: 'number', width: 100 }],
+          code: 'WindowApi.setX(100);',
+          run: function (v) { WindowApi.setX(Number(v.x)); } },
+        { api: 'setY(y)', desc: '设置左上角 Y（支持负值）',
+          fields: [{ key: 'y', value: '100', type: 'number', width: 100 }],
+          code: 'WindowApi.setY(100);',
+          run: function (v) { WindowApi.setY(Number(v.y)); } },
+        { api: 'setPosition(x, y)', desc: '同时设置 X / Y',
+          fields: [
+              { key: 'x', label: 'X', value: '120', type: 'number', width: 100 },
+              { key: 'y', label: 'Y', value: '120', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setPosition(120, 120);',
+          run: function (v) { WindowApi.setPosition(Number(v.x), Number(v.y)); } },
+        { api: 'centerOnScreen()', desc: '移动到窗口所在屏幕的可见区域中央',
+          code: 'WindowApi.centerOnScreen();',
+          actions: [{ label: '居中', kind: 'primary', run: function () { WindowApi.centerOnScreen(); } }] }
+    ]
+}];
+
+var crossQueryCards = [{
+    title: '跨窗口 · 查询',
+    desc: '目标取自顶部目标栏；留空 = 主窗口（null）',
+    ops: [
+        { api: 'getTitleByControllerKey(key)', desc: '读取标题',
+          code: 'var title = WindowApi.getTitleByControllerKey(targetKey);',
+          run: function () { return WindowApi.getTitleByControllerKey(target()); } },
+        { api: 'getWidthByControllerKey(key)', desc: '读取宽度；找不到返回 null',
+          code: 'var w = WindowApi.getWidthByControllerKey(targetKey);',
+          run: function () { return WindowApi.getWidthByControllerKey(target()); } },
+        { api: 'getHeightByControllerKey(key)', desc: '读取高度；找不到返回 null',
+          code: 'var h = WindowApi.getHeightByControllerKey(targetKey);',
+          run: function () { return WindowApi.getHeightByControllerKey(target()); } },
+        { api: 'getMinWidthByControllerKey(key)', desc: '读取最小宽度',
+          code: 'var minW = WindowApi.getMinWidthByControllerKey(targetKey);',
+          run: function () { return WindowApi.getMinWidthByControllerKey(target()); } },
+        { api: 'getMinHeightByControllerKey(key)', desc: '读取最小高度',
+          code: 'var minH = WindowApi.getMinHeightByControllerKey(targetKey);',
+          run: function () { return WindowApi.getMinHeightByControllerKey(target()); } },
+        { api: 'getResizableByControllerKey(key)', desc: '读取是否可调整大小',
+          code: 'var r = WindowApi.getResizableByControllerKey(targetKey);',
+          run: function () { return WindowApi.getResizableByControllerKey(target()); } },
+        { api: 'getXByControllerKey(key)', desc: '读取 X 坐标',
+          code: 'var x = WindowApi.getXByControllerKey(targetKey);',
+          run: function () { return WindowApi.getXByControllerKey(target()); } },
+        { api: 'getYByControllerKey(key)', desc: '读取 Y 坐标',
+          code: 'var y = WindowApi.getYByControllerKey(targetKey);',
+          run: function () { return WindowApi.getYByControllerKey(target()); } },
+        { api: 'getOpacityByControllerKey(key)', desc: '读取不透明度',
+          code: 'var o = WindowApi.getOpacityByControllerKey(targetKey);',
+          run: function () { return WindowApi.getOpacityByControllerKey(target()); } },
+        { api: 'isShowingByControllerKey(key)', desc: '是否显示中',
+          code: 'var showing = WindowApi.isShowingByControllerKey(targetKey);',
+          run: function () { return WindowApi.isShowingByControllerKey(target()); } },
+        { api: 'isIconifiedByControllerKey(key)', desc: '是否最小化',
+          code: 'var iconified = WindowApi.isIconifiedByControllerKey(targetKey);',
+          run: function () { return WindowApi.isIconifiedByControllerKey(target()); } },
+        { api: 'isMaximizedByControllerKey(key)', desc: '是否最大化',
+          code: 'var maximized = WindowApi.isMaximizedByControllerKey(targetKey);',
+          run: function () { return WindowApi.isMaximizedByControllerKey(target()); } },
+        { api: 'isFullScreenByControllerKey(key)', desc: '是否全屏',
+          code: 'var full = WindowApi.isFullScreenByControllerKey(targetKey);',
+          run: function () { return WindowApi.isFullScreenByControllerKey(target()); } },
+        { api: 'isAlwaysOnTopByControllerKey(key)', desc: '是否置顶',
+          code: 'var top = WindowApi.isAlwaysOnTopByControllerKey(targetKey);',
+          run: function () { return WindowApi.isAlwaysOnTopByControllerKey(target()); } }
+    ]
+}];
+
+var crossSetCards = [{
+    title: '跨窗口 · 设置',
+    desc: '写方法返回目标窗口是否存在',
+    ops: [
+        { api: 'setTitleByControllerKey(key, title)', desc: '设置标题',
+          fields: [{ key: 'title', value: '来自另一个窗口的标题', width: 220 }],
+          code: "WindowApi.setTitleByControllerKey(targetKey, '来自另一个窗口的标题');",
+          run: function (v) { return WindowApi.setTitleByControllerKey(target(), v.title); } },
+        { api: 'setWidthByControllerKey(key, width)', desc: '设置宽度',
+          fields: [{ key: 'w', value: '900', type: 'number', width: 100 }],
+          code: 'WindowApi.setWidthByControllerKey(targetKey, 900);',
+          run: function (v) { return WindowApi.setWidthByControllerKey(target(), Number(v.w)); } },
+        { api: 'setHeightByControllerKey(key, height)', desc: '设置高度',
+          fields: [{ key: 'h', value: '640', type: 'number', width: 100 }],
+          code: 'WindowApi.setHeightByControllerKey(targetKey, 640);',
+          run: function (v) { return WindowApi.setHeightByControllerKey(target(), Number(v.h)); } },
+        { api: 'setSizeByControllerKey(key, width, height)', desc: '同时设置宽高',
+          fields: [
+              { key: 'w', label: '宽', value: '960', type: 'number', width: 100 },
+              { key: 'h', label: '高', value: '680', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setSizeByControllerKey(targetKey, 960, 680);',
+          run: function (v) { return WindowApi.setSizeByControllerKey(target(), Number(v.w), Number(v.h)); } },
+        { api: 'setMinWidthByControllerKey(key, width)', desc: '设置最小宽度',
+          fields: [{ key: 'w', value: '480', type: 'number', width: 100 }],
+          code: 'WindowApi.setMinWidthByControllerKey(targetKey, 480);',
+          run: function (v) { return WindowApi.setMinWidthByControllerKey(target(), Number(v.w)); } },
+        { api: 'setMinHeightByControllerKey(key, height)', desc: '设置最小高度',
+          fields: [{ key: 'h', value: '360', type: 'number', width: 100 }],
+          code: 'WindowApi.setMinHeightByControllerKey(targetKey, 360);',
+          run: function (v) { return WindowApi.setMinHeightByControllerKey(target(), Number(v.h)); } },
+        { api: 'setMinSizeByControllerKey(key, width, height)', desc: '同时设置最小宽高',
+          fields: [
+              { key: 'w', label: '宽', value: '480', type: 'number', width: 100 },
+              { key: 'h', label: '高', value: '360', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setMinSizeByControllerKey(targetKey, 480, 360);',
+          run: function (v) { return WindowApi.setMinSizeByControllerKey(target(), Number(v.w), Number(v.h)); } },
+        { api: 'setResizableByControllerKey(key, resizable)', desc: '设置是否可调整大小',
+          code: 'WindowApi.setResizableByControllerKey(targetKey, false);',
+          actions: [
+              { label: '可调整', run: function () { return WindowApi.setResizableByControllerKey(target(), true); } },
+              { label: '固定大小', run: function () { return WindowApi.setResizableByControllerKey(target(), false); } }
+          ] },
+        { api: 'setXByControllerKey(key, x)', desc: '设置 X 坐标',
+          fields: [{ key: 'x', value: '60', type: 'number', width: 100 }],
+          code: 'WindowApi.setXByControllerKey(targetKey, 60);',
+          run: function (v) { return WindowApi.setXByControllerKey(target(), Number(v.x)); } },
+        { api: 'setYByControllerKey(key, y)', desc: '设置 Y 坐标',
+          fields: [{ key: 'y', value: '60', type: 'number', width: 100 }],
+          code: 'WindowApi.setYByControllerKey(targetKey, 60);',
+          run: function (v) { return WindowApi.setYByControllerKey(target(), Number(v.y)); } },
+        { api: 'setPositionByControllerKey(key, x, y)', desc: '同时设置坐标',
+          fields: [
+              { key: 'x', label: 'X', value: '80', type: 'number', width: 100 },
+              { key: 'y', label: 'Y', value: '80', type: 'number', width: 100 }
+          ],
+          code: 'WindowApi.setPositionByControllerKey(targetKey, 80, 80);',
+          run: function (v) { return WindowApi.setPositionByControllerKey(target(), Number(v.x), Number(v.y)); } },
+        { api: 'centerOnScreenByControllerKey(key)', desc: '目标窗口居中',
+          code: 'WindowApi.centerOnScreenByControllerKey(targetKey);',
+          actions: [{ label: '居中', run: function () { return WindowApi.centerOnScreenByControllerKey(target()); } }] },
+        { api: 'setOpacityByControllerKey(key, opacity)', desc: '设置不透明度',
+          fields: [{ key: 'o', value: '0.9', type: 'number', width: 100 }],
+          code: 'WindowApi.setOpacityByControllerKey(targetKey, 0.9);',
+          run: function (v) { return WindowApi.setOpacityByControllerKey(target(), Number(v.o)); } }
+    ]
+}];
+
+var crossStateCards = [{
+    title: '跨窗口 · 状态与生命周期',
+    desc: '危险操作会先弹确认',
+    ops: [
+        { api: 'minimizeWindowByControllerKey(key)', desc: '最小化目标窗口',
+          code: 'WindowApi.minimizeWindowByControllerKey(targetKey);',
+          actions: [{ label: '最小化', run: function () { return WindowApi.minimizeWindowByControllerKey(target()); } }] },
+        { api: 'restoreWindowByControllerKey(key)', desc: '恢复并聚焦目标窗口',
+          code: 'WindowApi.restoreWindowByControllerKey(targetKey);',
+          actions: [{ label: '恢复', run: function () { return WindowApi.restoreWindowByControllerKey(target()); } }] },
+        { api: 'showWindowByControllerKey(key)', desc: '显示并前置目标窗口',
+          code: 'WindowApi.showWindowByControllerKey(targetKey);',
+          actions: [{ label: '显示并前置', run: function () { return WindowApi.showWindowByControllerKey(target()); } }] },
+        { api: 'setMaximizedByControllerKey(key, maximized)', desc: '设置目标窗口最大化',
+          code: 'WindowApi.setMaximizedByControllerKey(targetKey, true);',
+          actions: [
+              { label: '最大化', run: function () { return WindowApi.setMaximizedByControllerKey(target(), true); } },
+              { label: '还原', run: function () { return WindowApi.setMaximizedByControllerKey(target(), false); } }
+          ] },
+        { api: 'setFullScreenByControllerKey(key, fullScreen)', desc: '设置目标窗口全屏',
+          code: 'WindowApi.setFullScreenByControllerKey(targetKey, true);',
+          actions: [
+              { label: '全屏', run: function () { return WindowApi.setFullScreenByControllerKey(target(), true); } },
+              { label: '退出全屏', run: function () { return WindowApi.setFullScreenByControllerKey(target(), false); } }
+          ] },
+        { api: 'setAlwaysOnTopByControllerKey(key, alwaysOnTop)', desc: '设置目标窗口置顶',
+          code: 'WindowApi.setAlwaysOnTopByControllerKey(targetKey, true);',
+          actions: [
+              { label: '置顶', run: function () { return WindowApi.setAlwaysOnTopByControllerKey(target(), true); } },
+              { label: '取消置顶', run: function () { return WindowApi.setAlwaysOnTopByControllerKey(target(), false); } }
+          ] },
+        { api: 'toFrontByControllerKey(key)', desc: '目标窗口置顶并聚焦',
+          code: 'WindowApi.toFrontByControllerKey(targetKey);',
+          actions: [{ label: '置顶', run: function () { return WindowApi.toFrontByControllerKey(target()); } }] },
+        { api: 'closeWindowByControllerKey(key)', desc: '强制关闭目标窗口；null 表示主窗口',
+          code: 'WindowApi.closeWindowByControllerKey(targetKey);',
+          actions: [{ label: '关闭', kind: 'danger',
+                      confirm: '确认关闭目标窗口吗？目标为 null（主窗口）时会退出应用。',
+                      run: function () { WindowApi.closeWindowByControllerKey(target()); } }] },
+        { api: 'requestCloseWindowByControllerKey(key)', desc: '触发目标窗口的关闭请求',
+          code: 'WindowApi.requestCloseWindowByControllerKey(targetKey);',
+          actions: [{ label: '请求关闭', kind: 'danger',
+                      confirm: '确认触发目标窗口的关闭请求吗？',
+                      run: function () { WindowApi.requestCloseWindowByControllerKey(target()); } }] }
+    ]
+}];
+
+var callbackCards = [{
+    title: '回调方式',
+    ops: [
+        { api: 'onCallByControllerKey(key, callBack)', desc: '只调用目标窗口的同名函数',
+          fields: [{ key: 'cb', value: 'demoPing', width: 180 }],
+          code: "WindowApi.onCallByControllerKey(targetKey, 'demoPing');",
+          run: function (v) { WindowApi.onCallByControllerKey(target(), v.cb); } },
+        { api: 'onCallAllStage(callBack)', desc: '广播给所有存活窗口（含主窗口）',
+          fields: [{ key: 'cb', value: 'demoPing', width: 180 }],
+          code: "WindowApi.onCallAllStage('demoPing');",
+          run: function (v) { WindowApi.onCallAllStage(v.cb); } },
+        { api: 'executeJsByControllerKey(key, script)', desc: '在目标窗口执行任意 JS',
+          fields: [{ key: 'js', value: "window.demoReceive && window.demoReceive('来自 executeJs')", width: 420 }],
+          code: 'WindowApi.executeJsByControllerKey(targetKey, "window.demoReceive && window.demoReceive(\'hi\')");',
+          run: function (v) { return WindowApi.executeJsByControllerKey(target(), v.js); } }
+    ]
+}];
+
+var lifecycleCards = [{
+    title: '状态查询',
+    ops: [
+        { api: 'getStatus()', desc: '当前窗口状态',
+          code: 'var status = WindowApi.getStatus();',
+          run: function () { return WindowApi.getStatus(); } },
+        { api: 'isOpened()', desc: '是否已就绪',
+          code: 'var opened = WindowApi.isOpened();',
+          run: function () { return WindowApi.isOpened(); } },
+        { api: 'hasWindow(key)', desc: '目标窗口是否仍存活',
+          code: 'var exists = WindowApi.hasWindow(targetKey);',
+          run: function () { return WindowApi.hasWindow(target()); } }
+    ]
+}];
+
+/* ====================================================================
+   完整 API 参考数据
+   ==================================================================== */
+
+var API_GROUPS = [
+    {
+        title: '文件与目录（历史能力）',
+        note: '保留在 WindowApi 中，便于页面直接调用',
+        rows: [
+            ['openDir(path)', 'String', '用系统文件管理器打开文件夹；成功返回 null，失败返回错误信息'],
+            ['chooseDir(initDirPath)', 'String', '弹出目录选择器；取消返回 null'],
+            ['createDir(path)', 'boolean', '创建目录（含父目录）；已存在且是目录也返回 true'],
+            ['deleteFiles(path)', 'boolean', '递归删除目录；有任一文件删不掉返回 false']
+        ]
+    },
+    {
+        title: '创建窗口',
+        note: '前三个方法显式指定父窗口，后三个自动以当前窗口为父窗口',
+        rows: [
+            ['createScene(htmlPath, width, height, parentControllerKey)', 'String', '创建普通窗口（NONE）并返回新窗口 key；宽高 null/0 使用默认值'],
+            ['createWindowScene(htmlPath, width, height, parentControllerKey)', 'String', '创建 WINDOW_MODAL 模态窗口（需要 owner）'],
+            ['createApplicationScene(htmlPath, width, height, parentControllerKey)', 'String', '创建 APPLICATION_MODAL 模态窗口'],
+            ['createChildScene(htmlPath, width, height)', 'String', '以当前窗口为父窗口创建普通窗口'],
+            ['createChildWindowScene(htmlPath, width, height)', 'String', '以当前窗口为 owner 创建 WINDOW_MODAL 窗口'],
+            ['createChildApplicationScene(htmlPath, width, height)', 'String', '以当前窗口为 owner 创建 APPLICATION_MODAL 窗口']
+        ]
+    },
+    {
+        title: '当前窗口 · 标识与层级',
+        rows: [
+            ['getKey()', 'String', '当前窗口 key；主窗口返回 null'],
+            ['isMainWindow()', 'boolean', '当前是否主窗口'],
+            ['getParentKey()', 'String', '父窗口 key；无父窗口返回 null'],
+            ['getChildKeys()', 'String[]', '直接子窗口 key（已排序、过滤已结束窗口）'],
+            ['getAllKeys()', 'String[]', '应用内全部普通窗口 key（不含主窗口，已排序）'],
+            ['getWindowCount()', 'int', '应用内窗口总数（含主窗口）'],
+            ['getStatus()', 'String', '生命周期状态，如 OPENED(已打开)'],
+            ['isOpened()', 'boolean', '窗口是否已显示且页面已加载'],
+            ['getStage()', 'Stage', '底层 JavaFX Stage（继承自 AbstractJavaApiBridge；安全提示见注意事项）']
+        ]
+    },
+    {
+        title: '当前窗口 · 标题与尺寸',
+        rows: [
+            ['getTitle()', 'String', '窗口标题；窗口不可用返回 null'],
+            ['setTitle(title)', 'void', '设置标题；null 视为空串'],
+            ['getWidth()', 'double', '窗口宽度；窗口不可用返回 0'],
+            ['setWidth(width)', 'void', '设置宽度；必须大于 0 的有限数'],
+            ['getHeight()', 'double', '窗口高度；窗口不可用返回 0'],
+            ['setHeight(height)', 'void', '设置高度；必须大于 0 的有限数'],
+            ['setSize(width, height)', 'void', '一次设置宽高'],
+            ['getMinWidth()', 'double', '最小宽度；窗口不可用返回 0'],
+            ['setMinWidth(width)', 'void', '设置最小宽度；0 表示不限制'],
+            ['getMinHeight()', 'double', '最小高度；窗口不可用返回 0'],
+            ['setMinHeight(height)', 'void', '设置最小高度；0 表示不限制'],
+            ['setMinSize(width, height)', 'void', '一次设置最小宽高'],
+            ['getResizable()', 'boolean', '是否允许调整大小'],
+            ['setResizable(resizable)', 'void', '设置是否允许调整大小']
+        ]
+    },
+    {
+        title: '当前窗口 · 位置与外观',
+        rows: [
+            ['getX()', 'double', '左上角 X 坐标；窗口不可用返回 0'],
+            ['getY()', 'double', '左上角 Y 坐标；窗口不可用返回 0'],
+            ['setX(x)', 'void', '设置 X 坐标；支持负值'],
+            ['setY(y)', 'void', '设置 Y 坐标；支持负值'],
+            ['setPosition(x, y)', 'void', '同时设置坐标'],
+            ['centerOnScreen()', 'void', '移动到窗口所在屏幕的可见区域中央'],
+            ['getOpacity()', 'double', '不透明度 0.0~1.0；窗口不可用返回 1.0'],
+            ['setOpacity(opacity)', 'void', '设置不透明度；超出范围自动截断']
+        ]
+    },
+    {
+        title: '当前窗口 · 状态与生命周期',
+        rows: [
+            ['isShowing()', 'boolean', '窗口是否正在显示'],
+            ['isIconified()', 'boolean', '窗口是否已最小化'],
+            ['minimizeWindow()', 'void', '最小化到任务栏'],
+            ['hiddenWindow()', 'void', 'minimizeWindow() 的历史别名'],
+            ['restoreWindow()', 'void', '取消最小化、置顶并聚焦'],
+            ['showWindow()', 'void', '确保窗口显示并前置'],
+            ['setMaximized(maximized)', 'void', '设置是否最大化'],
+            ['isMaximized()', 'boolean', '是否最大化'],
+            ['toggleMaximized()', 'void', '最大化 / 还原切换'],
+            ['setFullScreen(fullScreen)', 'void', '设置是否全屏'],
+            ['isFullScreen()', 'boolean', '是否全屏'],
+            ['toggleFullScreen()', 'void', '全屏 / 窗口切换'],
+            ['setAlwaysOnTop(alwaysOnTop)', 'void', '设置是否总在最前'],
+            ['isAlwaysOnTop()', 'boolean', '是否总在最前'],
+            ['toFront()', 'void', '置顶并请求焦点'],
+            ['closeWindow()', 'void', '强制关闭当前窗口（不触发关闭确认；主窗口关闭后退出应用）'],
+            ['requestCloseWindow()', 'void', '触发 WINDOW_CLOSE_REQUEST，未被拦截时兜底关闭'],
+            ['closeChildWindows()', 'int', '关闭当前窗口全部子窗口，返回提交关闭的数量']
+        ]
+    },
+    {
+        title: '跨窗口 · 查询',
+        note: 'controllerKey 为 null 表示主窗口',
+        rows: [
+            ['getParentKeyByControllerKey(key)', 'String', '父窗口 key；找不到返回 null'],
+            ['getChildKeysByControllerKey(key)', 'String[]', '子窗口 key；找不到返回空数组'],
+            ['hasWindow(key)', 'boolean', '目标窗口是否存在且未结束'],
+            ['getStatusByControllerKey(key)', 'String', '目标窗口生命周期状态；找不到返回 null'],
+            ['isOpenedByControllerKey(key)', 'boolean', '目标窗口是否已就绪'],
+            ['getTitleByControllerKey(key)', 'String', '标题；找不到返回 null'],
+            ['getWidthByControllerKey(key)', 'Double', '宽度；找不到返回 null'],
+            ['getHeightByControllerKey(key)', 'Double', '高度；找不到返回 null'],
+            ['getMinWidthByControllerKey(key)', 'Double', '最小宽度；找不到返回 null'],
+            ['getMinHeightByControllerKey(key)', 'Double', '最小高度；找不到返回 null'],
+            ['getResizableByControllerKey(key)', 'Boolean', '是否可调整大小；找不到返回 null'],
+            ['getXByControllerKey(key)', 'Double', 'X 坐标；找不到返回 null'],
+            ['getYByControllerKey(key)', 'Double', 'Y 坐标；找不到返回 null'],
+            ['getOpacityByControllerKey(key)', 'Double', '不透明度；找不到返回 null'],
+            ['isShowingByControllerKey(key)', 'Boolean', '是否显示中；找不到返回 null'],
+            ['isIconifiedByControllerKey(key)', 'Boolean', '是否最小化；找不到返回 null'],
+            ['isMaximizedByControllerKey(key)', 'Boolean', '是否最大化；找不到返回 null'],
+            ['isFullScreenByControllerKey(key)', 'Boolean', '是否全屏；找不到返回 null'],
+            ['isAlwaysOnTopByControllerKey(key)', 'Boolean', '是否置顶；找不到返回 null']
+        ]
+    },
+    {
+        title: '跨窗口 · 设置',
+        note: '写方法返回目标窗口是否存在',
+        rows: [
+            ['setTitleByControllerKey(key, title)', 'boolean', '设置标题'],
+            ['setWidthByControllerKey(key, width)', 'boolean', '设置宽度'],
+            ['setHeightByControllerKey(key, height)', 'boolean', '设置高度'],
+            ['setSizeByControllerKey(key, width, height)', 'boolean', '同时设置宽高'],
+            ['setMinWidthByControllerKey(key, width)', 'boolean', '设置最小宽度'],
+            ['setMinHeightByControllerKey(key, height)', 'boolean', '设置最小高度'],
+            ['setMinSizeByControllerKey(key, width, height)', 'boolean', '同时设置最小宽高'],
+            ['setResizableByControllerKey(key, resizable)', 'boolean', '设置是否可调整大小'],
+            ['setXByControllerKey(key, x)', 'boolean', '设置 X 坐标'],
+            ['setYByControllerKey(key, y)', 'boolean', '设置 Y 坐标'],
+            ['setPositionByControllerKey(key, x, y)', 'boolean', '同时设置坐标'],
+            ['centerOnScreenByControllerKey(key)', 'boolean', '目标窗口居中'],
+            ['setOpacityByControllerKey(key, opacity)', 'boolean', '设置不透明度']
+        ]
+    },
+    {
+        title: '跨窗口 · 状态与生命周期',
+        rows: [
+            ['minimizeWindowByControllerKey(key)', 'boolean', '最小化目标窗口'],
+            ['hiddenWindowByControllerKey(key)', 'void', 'minimizeWindowByControllerKey 的历史别名'],
+            ['restoreWindowByControllerKey(key)', 'boolean', '恢复并聚焦目标窗口'],
+            ['showWindowByControllerKey(key)', 'boolean', '显示并前置目标窗口'],
+            ['setMaximizedByControllerKey(key, maximized)', 'boolean', '设置目标窗口最大化'],
+            ['setFullScreenByControllerKey(key, fullScreen)', 'boolean', '设置目标窗口全屏'],
+            ['setAlwaysOnTopByControllerKey(key, alwaysOnTop)', 'boolean', '设置目标窗口置顶'],
+            ['toFrontByControllerKey(key)', 'boolean', '目标窗口置顶并聚焦'],
+            ['closeWindowByControllerKey(key)', 'void', '强制关闭目标窗口'],
+            ['requestCloseWindowByControllerKey(key)', 'void', '触发目标窗口的关闭请求']
+        ]
+    },
+    {
+        title: '回调与脚本',
+        rows: [
+            ['onCallByControllerKey(key, callBack)', 'void', '调用目标窗口的同名 JS 函数'],
+            ['onCallAllStage(callBack)', 'void', '广播给所有存活窗口'],
+            ['executeJsByControllerKey(key, script)', 'boolean', '在目标窗口执行 JS；目标不存在返回 false']
+        ]
+    }
+];
+
+function renderReference() {
+    var host = $('reference');
+    if (!host) {
+        return;
+    }
+    host.innerHTML = '';
+    for (var g = 0; g < API_GROUPS.length; g++) {
+        var group = API_GROUPS[g];
+        var card = el('section', 'card');
+        var head = el('div', 'card-head');
+        var title = el('span', 'card-title');
+        title.textContent = group.title;
+        head.appendChild(title);
+        if (group.note) {
+            var note = el('span', 'card-desc');
+            note.textContent = group.note;
+            head.appendChild(note);
+        }
+        card.appendChild(head);
+
+        var table = el('table', 'tbl');
+        var thead = el('thead');
+        var headRow = el('tr');
+        var widths = ['38%', '10%', ''];
+        var titles = ['方法签名', '返回', '说明'];
+        for (var c = 0; c < titles.length; c++) {
+            var th = el('th');
+            if (widths[c]) {
+                th.style.width = widths[c];
+            }
+            th.textContent = titles[c];
+            headRow.appendChild(th);
+        }
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        var tbody = el('tbody');
+        for (var r = 0; r < group.rows.length; r++) {
+            var row = group.rows[r];
+            var tr = el('tr');
+            tr.setAttribute('data-name', row[0].toLowerCase());
+            var sigTd = el('td', 'sig-cell');
+            sigTd.textContent = row[0];
+            tr.appendChild(sigTd);
+            var retTd = el('td', 'mono');
+            retTd.textContent = row[1];
+            tr.appendChild(retTd);
+            var descTd = el('td');
+            descTd.textContent = row[2];
+            tr.appendChild(descTd);
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        card.appendChild(table);
+        host.appendChild(card);
+    }
+}
+
+function filterReference() {
+    var input = $('apiFilter');
+    if (!input) {
+        return;
+    }
+    var keyword = input.value.replace(/^\s+|\s+$/g, '').toLowerCase();
+    var rows = document.querySelectorAll('#reference tbody tr');
+    for (var i = 0; i < rows.length; i++) {
+        var name = rows[i].getAttribute('data-name') || '';
+        rows[i].style.display = (keyword === '' || name.indexOf(keyword) >= 0) ? '' : 'none';
+    }
+}
+
+/* ====================================================================
+   Java 侧回调（框架约定，方法名不可改）
+   ==================================================================== */
+
+window['$$_apiReady'] = function () {
+    apiReady = true;
+    $('apiTag').className = 'tag tag-success';
+    $('apiDot').className = 'dot dot-ok';
+    $('apiText').textContent = 'API 就绪';
+    try {
+        currentKey = WindowApi.getKey();
+    } catch (e) {
+        currentKey = window['$controllerKey'] || null;
+    }
+    // 框架创建的子窗口默认没有标题，示例页给自己补一个，便于辨识
+    if (currentKey !== null && !WindowApi.getTitle()) {
+        WindowApi.setTitle('WindowApi 示例 · ' + shortKey(currentKey));
+    }
+    log('success', 'WindowApi 已注入，当前窗口：' + (currentKey === null ? '主窗口（null）' : shortKey(currentKey)));
+    refreshAll();
+
+    // 一行自检输出到后端日志（页面底部的"调用日志"看不到 console 输出）：
+    // 能打印出这一行，说明注入、字段读取和 String[] 转换都正常。
+    try {
+        console.log('[WindowApi demo] key=' + WindowApi.getKey()
+            + ' status=' + WindowApi.getStatus()
+            + ' size=' + WindowApi.getWidth() + 'x' + WindowApi.getHeight()
+            + ' children=' + toList(WindowApi.getChildKeys()).length
+            + ' windows=' + toList(WindowApi.getAllKeys()).length
+            + ' count=' + WindowApi.getWindowCount()
+            + ' main=' + WindowApi.isMainWindow());
+    } catch (e) {
+        console.log('[WindowApi demo] 自检失败：' + e);
+    }
+};
+
+window['$$_onChildReady'] = function (childKey) {
+    log('info', '子窗口已就绪：' + shortKey(childKey));
+    refreshAll();
+};
+
+window['$$_onChildClosed'] = function (childKey) {
+    log('warn', '子窗口已关闭：' + shortKey(childKey));
+    var targetInput = $('targetKey');
+    if (targetInput && targetInput.value === childKey) {
+        targetInput.value = '';
+    }
+    refreshAll();
+};
+
+window.demoPing = function () {
+    log('info', '收到 demoPing（' + (currentKey === null ? '主窗口' : '子窗口 ' + shortKey(currentKey)) + '）');
+};
+
+window.demoReceive = function (payload) {
+    log('success', 'demoReceive 收到参数：' + fmt(payload));
+};
+
+/* ====================================================================
+   初始化
+   ==================================================================== */
+
+function init() {
+    renderNav();
+    renderCards('infoCards', infoCards);
+    renderCards('propCards', propCards);
+    renderCards('stateCards', stateCards);
+    renderCards('layoutCards', layoutCards);
+    renderCards('crossQueryCards', crossQueryCards);
+    renderCards('crossSetCards', crossSetCards);
+    renderCards('crossStateCards', crossStateCards);
+    renderCards('callbackCards', callbackCards);
+    renderCards('lifecycleCards', lifecycleCards);
+    renderReference();
+    refreshChildren();
+    syncTargetSelect();
+    refreshAll();
+
+    var filter = $('apiFilter');
+    if (filter) {
+        filter.onkeyup = filterReference;
+        filter.oninput = filterReference;
+    }
+
+    currentKey = window['$controllerKey'] || null;
+    log('muted', '页面已加载，等待 Java API 注入…');
+
+    setInterval(function () {
+        if (apiReady) {
+            refreshStats();
+            refreshTargetHint();
+        }
+    }, 1000);
+}
+
+init();
+</script>
+</body>
+</html>

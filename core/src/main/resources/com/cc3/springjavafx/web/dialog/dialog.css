@@ -1,0 +1,190 @@
+/*
+ * 内置对话框样式 —— TDesign（腾讯设计体系）风格
+ *
+ * 采用 TDesign 亮色主题的核心 token：
+ *   品牌色   --td-brand-color        #0052D9   hover #366EF4   active #0034B5
+ *   成功色   --td-success-color      #2BA471
+ *   警告色   --td-warning-color      #E37318
+ *   错误色   --td-error-color        #D54941
+ *   文本     primary rgba(0,0,0,.90) / secondary rgba(0,0,0,.60) / placeholder rgba(0,0,0,.40)
+ *   背景     container #FFFFFF / secondarycontainer #F3F3F3
+ *   描边     --td-component-stroke   #DCDCDC
+ *   圆角     --td-radius-default 3px（按钮/输入框）、--td-radius-medium 6px（对话框）
+ *   按钮     高度 32px，左右内边距 16px
+ *
+ * 换肤方式：
+ *   1) 在 app.yml 里用 app.dialog.stylesheet 追加一份 CSS —— 后加载，同名规则会覆盖这里；
+ *   2) 继承 DefaultWebDialogHandler 覆写 getStylesheets()，完全替换样式表；
+ *   3) 直接改本文件重新打包。
+ *
+ * 结构：
+ *   .web-dialog-root   透明根容器（四周留白用于投影）
+ *   .web-dialog-card   白色卡片
+ *   .web-dialog-icon   级别图标（配色由 .level-* 控制）
+ *   .web-dialog-title / .web-dialog-message / .web-dialog-input
+ *   .web-dialog-close  右上角关闭按钮
+ *   .web-dialog-btn    按钮，.primary 主按钮 / .ghost 次按钮
+ */
+
+.web-dialog-root {
+    -fx-background-color: transparent;
+    -fx-font-family: "Microsoft YaHei UI";
+}
+
+.web-dialog-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 6;
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.14), 24, 0, 0, 8);
+}
+
+/* ---------- 标题区 ---------- */
+
+.web-dialog-header {
+    -fx-alignment: center-left;
+}
+
+.web-dialog-icon {
+    -fx-min-width: 22;
+    -fx-min-height: 22;
+    -fx-max-width: 22;
+    -fx-max-height: 22;
+    -fx-alignment: center;
+    -fx-background-radius: 11;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0052D9;
+    -fx-background-color: rgba(0, 82, 217, 0.10);
+}
+
+.web-dialog-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: rgba(0, 0, 0, 0.90);
+}
+
+.web-dialog-close {
+    -fx-background-color: transparent;
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+    -fx-border-width: 0;
+    -fx-padding: 0;
+    -fx-min-width: 24;
+    -fx-min-height: 24;
+    -fx-max-width: 24;
+    -fx-max-height: 24;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(0, 0, 0, 0.40);
+    -fx-cursor: hand;
+    -fx-effect: null;
+}
+
+.web-dialog-close:hover {
+    -fx-background-color: #F3F3F3;
+    -fx-text-fill: rgba(0, 0, 0, 0.90);
+}
+
+/* ---------- 正文与输入 ---------- */
+
+.web-dialog-message {
+    -fx-font-size: 14px;
+    -fx-text-fill: rgba(0, 0, 0, 0.60);
+    -fx-line-spacing: 5;
+}
+
+.web-dialog-input {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 3;
+    -fx-border-radius: 3;
+    -fx-border-color: #DCDCDC;
+    -fx-border-width: 1;
+    -fx-padding: 0 12;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-font-size: 14px;
+    -fx-text-fill: rgba(0, 0, 0, 0.90);
+    -fx-prompt-text-fill: rgba(0, 0, 0, 0.40);
+}
+
+.web-dialog-input:focused {
+    -fx-border-color: #0052D9;
+}
+
+/* ---------- 按钮 ---------- */
+
+.web-dialog-buttons {
+    -fx-alignment: center-right;
+}
+
+.web-dialog-btn {
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+    -fx-border-width: 0;
+    -fx-padding: 0 16;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+    -fx-effect: null;
+}
+
+.web-dialog-btn.ghost {
+    -fx-background-color: #F3F3F3;
+    -fx-text-fill: rgba(0, 0, 0, 0.90);
+}
+
+.web-dialog-btn.ghost:hover {
+    -fx-background-color: #EEEEEE;
+}
+
+.web-dialog-btn.ghost:pressed {
+    -fx-background-color: #E8E8E8;
+}
+
+.web-dialog-btn.primary {
+    -fx-background-color: #0052D9;
+    -fx-text-fill: #FFFFFF;
+}
+
+.web-dialog-btn.primary:hover {
+    -fx-background-color: #366EF4;
+}
+
+.web-dialog-btn.primary:pressed {
+    -fx-background-color: #0034B5;
+}
+
+/* ---------- 级别配色 ---------- */
+
+.web-dialog-icon.level-success {
+    -fx-text-fill: #2BA471;
+    -fx-background-color: rgba(43, 164, 113, 0.12);
+}
+
+.web-dialog-icon.level-warning {
+    -fx-text-fill: #E37318;
+    -fx-background-color: rgba(227, 115, 24, 0.12);
+}
+
+.web-dialog-icon.level-error {
+    -fx-text-fill: #D54941;
+    -fx-background-color: rgba(213, 73, 65, 0.12);
+}
+
+.web-dialog-icon.level-question {
+    -fx-text-fill: #0052D9;
+    -fx-background-color: rgba(0, 82, 217, 0.10);
+}
+
+/* 仅错误级别使用 TDesign 的危险按钮，其余主按钮统一品牌蓝 */
+.web-dialog-btn.primary.level-error {
+    -fx-background-color: #D54941;
+}
+
+.web-dialog-btn.primary.level-error:hover {
+    -fx-background-color: #E5665E;
+}
+
+.web-dialog-btn.primary.level-error:pressed {
+    -fx-background-color: #B03A32;
+}
