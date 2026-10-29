@@ -1,13 +1,12 @@
 name: Release
 
 # 打 tag（v*）时：为 Windows / Linux / macOS 各构建一个可直接运行的 demo jar，
-# 同时发布到 GitHub Release 和 Gitee 发行版。
-# 仓库代码本身由 Gitee 的「仓库镜像管理」从 GitHub 拉取同步，这里只负责"发行包"。
+# 并上传到 GitHub Release。
 #
-# 需要仓库 secret（Settings → Secrets and variables → Actions）：
-#   GITEE_OWNER  你的 Gitee 用户名
-#   GITEE_TOKEN  Gitee 私人令牌，勾选 projects 权限
-# GitHub Release 用内置 GITHUB_TOKEN，无需额外配置；没配 Gitee 凭证时只跳过 Gitee。
+# Gitee 侧不在这里处理：代码由 Gitee 的「仓库镜像管理」从 GitHub 拉取同步，
+# 发行版与三个平台的附件由 Gitee Go 流水线（.workflow/publish-gitee.yml）负责。
+#
+# 触发：推送 v* tag，或手动 workflow_dispatch。
 
 on:
   push:
@@ -17,10 +16,6 @@ on:
       tag:
         description: '要发布的 tag，例如 v1.0.0'
         required: true
-      attach_to_gitee:
-        description: '是否同步到 Gitee 发行版'
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -62,10 +57,10 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: 发布
+    name: 发布到 GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +78,6 @@ jobs:
           echo "将发布：$TAG"
           ls -lh dist
 
-      # ---------------- GitHub Release ----------------
       - name: 发布到 GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,95 +90,3 @@ jobs:
             gh release create "$TAG" --title "spring-javafx $TAG" --generate-notes
           fi
           gh release upload "$TAG" dist/*.jar --clobber
-
-      # ---------------- Gitee 发行版 ----------------
-      - name: 检查 Gitee 凭证
-        id: check
-        if: github.event.inputs.attach_to_gitee != 'false'
-        env:
-          OWNER: ${{ secrets.GITEE_OWNER }}
-          TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          if [ -z "$OWNER" ] || [ -z "$TOKEN" ]; then
-            echo "::notice::未配置 GITEE_OWNER / GITEE_TOKEN，跳过 Gitee 发布"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: 推送 tag 到 Gitee
-        if: steps.check.outputs.skip == 'false'
-        env:
-          OWNER: ${{ secrets.GITEE_OWNER }}
-          TOKEN: ${{ secrets.GITEE_TOKEN }}
-          TAG: ${{ steps.vars.outputs.tag }}
-        run: |
-          # 镜像可能已同步该 tag，推送被拒属正常
-          git push "https://${OWNER}:${TOKEN}@gitee.com/${OWNER}/spring-javafx.git" \
-            "refs/tags/${TAG}" \
-            || echo "::notice::tag 推送被拒绝（可能镜像已同步），继续创建发行版"
-
-      - name: 创建/更新 Gitee 发行版
-        if: steps.check.outputs.skip == 'false'
-        id: gitee
-        env:
-          OWNER: ${{ secrets.GITEE_OWNER }}
-          TOKEN: ${{ secrets.GITEE_TOKEN }}
-          TAG: ${{ steps.vars.outputs.tag }}
-        run: |
-          set -uo pipefail
-          API="https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases"
-          # Gitee 从 GitHub 的 runner 访问经常超时/抖动，统一加重试
-          CURL=(curl -sS --connect-timeout 30 --max-time 180 --retry 3 --retry-delay 5 --retry-all-errors)
-
-          BODY=$(cat <<'EOF'
-          已发布到 Maven Central，无需额外配置仓库：
-
-          ```xml
-          <dependency>
-              <groupId>io.github.a-walking-star</groupId>
-              <artifactId>spring-javafx</artifactId>
-              <version>VERSION</version>
-          </dependency>
-          ```
-
-          附件是可直接运行的示例程序（内置对应平台的 JavaFX 原生库）：
-          - `spring-javafx-demo-win-x64.jar`（Windows）
-          - `spring-javafx-demo-linux-x64.jar`（Linux）
-          - `spring-javafx-demo-mac-x64.jar`（macOS Intel）
-
-          运行：`java -jar <对应的 jar>`（需 JDK 8/11/17；JDK 11+ 的运行时依赖见 README）。
-          EOF
-          )
-          BODY="${BODY//VERSION/${TAG#v}}"
-
-          # 先查是否已有该 tag 的发行版（重跑时很常见），没有再创建
-          DETAIL=$("${CURL[@]}" "${API}/tags/${TAG}?access_token=${TOKEN}" || true)
-          ID=$(echo "$DETAIL" | jq -r '.id // empty' 2>/dev/null || true)
-
-          if [ -z "$ID" ]; then
-            PAYLOAD=$(jq -n \
-              --arg token "$TOKEN" \
-              --arg tag "$TAG" \
-              --arg name "spring-javafx ${TAG}" \
-              --arg body "$BODY" \
-              '{access_token:$token, tag_name:$tag, name:$name, body:$body, target_commitish:"main", prerelease:false}')
-
-            RESP=$("${CURL[@]}" -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD" || true)
-            ID=$(echo "$RESP" | jq -r '.id // empty' 2>/dev/null || true)
-            if [ -z "$ID" ]; then
-              echo "$RESP" | head -c 500
-              echo "::error::Gitee 发行版创建失败（上面是接口返回，网络超时也会走到这里）"
-              exit 1
-            fi
-          else
-            # 已存在则同步说明（旧说明可能只写了 Windows 一个附件）
-            PATCH=$(jq -n --arg token "$TOKEN" --arg name "spring-javafx ${TAG}" --arg body "$BODY" \
-              '{access_token:$token, name:$name, body:$body}')
-            "${CURL[@]}" -X PATCH "${API}/${ID}" -H "Content-Type: application/json" -d "$PATCH" >/dev/null \
-              && echo "::notice::已更新现有发行版的说明"
-          fi
-
-          echo "id=$ID" >> "$GITHUB_OUTPUT"
-          echo "发行版：https://gitee.com/${OWNER}/spring-javafx/releases/tag/${TAG}"
-          echo "::notice::附件由维护者在本地用 tools/publish-gitee.ps1 上传（Gitee 从 GitHub runner 上传太慢）"

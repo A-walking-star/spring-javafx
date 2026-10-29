@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # 在 Gitee Go 流水线里给指定 tag 的 Gitee 发行版补齐三个平台的 demo jar。
 #
-# 设计成幂等：已经有全部附件时直接退出（定时触发时不会白跑构建）。
-# 依赖：git / mvn / curl（Gitee Go 的 build@maven 环境都有）。
+# 幂等：附件齐全时直接退出（定时/重复触发不会白跑构建）。
+# 发行版不存在时会自己创建（不依赖 GitHub Actions）。
 #
-# 需要的环境变量：
-#   GITEE_TOKEN  有 projects 权限的私人令牌（在 Gitee Go 流水线里配成变量）
+# 环境变量：
+#   GITEE_TOKEN  有 projects 权限的私人令牌（Gitee Go 流水线变量）
 # 可选：
-#   TAG          指定 tag，默认取 git describe 的最近 tag
+#   TAG          指定 tag，默认取最近的 v* tag
 set -euo pipefail
 
 ASSETS=(spring-javafx-demo-win-x64.jar spring-javafx-demo-linux-x64.jar spring-javafx-demo-mac-x64.jar)
 PLATFORMS=(win linux mac)
 
 if [ -z "${GITEE_TOKEN:-}" ] || [ "${GITEE_TOKEN:0:2}" = '${' ]; then
-  echo "GITEE_TOKEN 未配置（在 Gitee Go 流水线变量里添加一个私密变量 GITEE_TOKEN），跳过"
+  echo "GITEE_TOKEN 未配置（在 Gitee Go 流水线变量里添加私密变量 GITEE_TOKEN），跳过"
   exit 0
 fi
 
@@ -23,40 +23,82 @@ if [ -z "$TAG" ]; then
   TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
 fi
 if [ -z "$TAG" ]; then
-  # 浅克隆里没有本地 tag 时，从远端取最大的 v* tag
   TAG="$(git ls-remote --tags origin 2>/dev/null | grep -o 'refs/tags/v[0-9][0-9.]*$' \
     | sed 's#refs/tags/##' | sort -V | tail -1 || true)"
 fi
 if [ -z "$TAG" ]; then
-  echo "没有找到 tag，跳过"
+  echo "没有找到 v* tag，跳过"
   exit 0
 fi
 
-# 从 origin 解析 owner/repo，避免把用户名写死
 REMOTE="$(git remote get-url origin)"
-OWNER="$(echo "$REMOTE" | sed -E 's#.*[:/]([^/]+)/[^/]+(\.git)?$#\1#')"
-REPO="$(echo "$REMOTE" | sed -E 's#.*[:/][^/]+/([^/]+?)(\.git)?$#\1#')"
+REPO="$(basename "$REMOTE" .git)"
+OWNER="$(echo "$REMOTE" | sed -E 's#.*[:/]([^/]+)/[^/]+$#\1#')"
 API="https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases"
-echo "仓库：${OWNER}/${REPO}   tag：${TAG}"
+echo "仓库=${OWNER}/${REPO} tag=${TAG}"
 
-DETAIL="$(curl -sS --connect-timeout 20 --max-time 120 --retry 3 --retry-delay 5 \
-  "${API}/tags/${TAG}?access_token=${GITEE_TOKEN}" || true)"
-ID="$(echo "$DETAIL" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)"
-if [ -z "$ID" ]; then
-  echo "Gitee 上还没有 ${TAG} 的发行版（由 GitHub Actions 创建），本次跳过"
-  exit 0
-fi
-echo "release id=${ID}"
+CURL=(curl -sS --connect-timeout 30 --max-time 180 --retry 3 --retry-delay 5 --retry-all-errors)
 
-have_asset() {
-  echo "$DETAIL" | grep -q "\"name\":\"$1\""
+# Gitee 的 JSON 带空格（"id": 123），所以正则里要容忍空白
+id_of() {
+  echo "$1" | grep -o '"id"[[:space:]]*:[[:space:]]*[0-9]\+' | head -1 | grep -o '[0-9]\+' || true
 }
+has_asset() {
+  echo "$1" | grep -q "\"name\"[[:space:]]*:[[:space:]]*\"$2\"" && echo yes || echo no
+}
+
+echo "==> 查询发行版 ..."
+DETAIL="$("${CURL[@]}" "${API}/tags/${TAG}?access_token=${GITEE_TOKEN}" || true)"
+ID="$(id_of "$DETAIL")"
+
+BODY='已发布到 Maven Central，无需额外配置仓库：
+
+```xml
+<dependency>
+    <groupId>io.github.a-walking-star</groupId>
+    <artifactId>spring-javafx</artifactId>
+    <version>__VERSION__</version>
+</dependency>
+```
+
+附件是可直接运行的示例程序（内置对应平台的 JavaFX 原生库）：
+- `spring-javafx-demo-win-x64.jar`（Windows）
+- `spring-javafx-demo-linux-x64.jar`（Linux）
+- `spring-javafx-demo-mac-x64.jar`（macOS Intel）
+
+运行：`java -jar <对应的 jar>`（需 JDK 8/11/17；JDK 11+ 的运行时依赖见 README）。'
+BODY="${BODY//__VERSION__/${TAG#v}}"
+BODY_JSON="$(printf '%s' "$BODY" | sed ':a;N;$!ba;s/\n/\\n/g')"
+
+if [ -z "$ID" ]; then
+  echo "接口返回：$(echo "$DETAIL" | head -c 300)"
+  echo "==> 发行版不存在，创建 ..."
+  PAYLOAD="$(printf '{"access_token":"%s","tag_name":"%s","name":"spring-javafx %s","body":"%s","target_commitish":"main","prerelease":false}' \
+    "$GITEE_TOKEN" "$TAG" "$TAG" "$BODY_JSON")"
+
+  RESP="$("${CURL[@]}" -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD" || true)"
+  ID="$(id_of "$RESP")"
+  if [ -z "$ID" ]; then
+    echo "创建失败：$(echo "$RESP" | head -c 300)"
+    exit 1
+  fi
+  DETAIL="$RESP"
+  echo "==> 已创建，id=${ID}"
+else
+  echo "==> 已存在，id=${ID}"
+  # 旧说明可能只写了 Windows 一个附件，顺手同步一下
+  PATCH="$(printf '{"access_token":"%s","name":"spring-javafx %s","body":"%s"}' \
+    "$GITEE_TOKEN" "$TAG" "$BODY_JSON")"
+  "${CURL[@]}" -X PATCH "${API}/${ID}" -H "Content-Type: application/json" -d "$PATCH" >/dev/null 2>&1 \
+    && echo "    已更新发行版说明" || echo "    说明更新被忽略"
+fi
 
 missing=0
 for a in "${ASSETS[@]}"; do
-  if have_asset "$a"; then
-    echo "已存在：$a"
+  if [ "$(has_asset "$DETAIL" "$a")" = "yes" ]; then
+    echo "    已有 $a"
   else
+    echo "    缺少 $a"
     missing=$((missing + 1))
   fi
 done
@@ -69,18 +111,23 @@ mkdir -p dist
 for i in "${!PLATFORMS[@]}"; do
   p="${PLATFORMS[$i]}"
   jar="${ASSETS[$i]}"
-  if have_asset "$jar"; then
+  if [ "$(has_asset "$DETAIL" "$jar")" = "yes" ]; then
     continue
   fi
+
   echo "==> 构建 ${p} ..."
   mvn -B -ntp -DskipTests "-Djavafx.platform=${p}" package
   cp demo/target/spring-javafx-demo.jar "dist/${jar}"
 
-  echo "==> 上传 ${jar} ..."
-  curl -sS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 10 \
+  echo "==> 上传 ${jar} ($(du -h "dist/${jar}" | cut -f1)) ..."
+  HTTP="$("${CURL[@]}" -o /tmp/gitee-upload.json -w '%{http_code}' \
     -X POST "${API}/${ID}/attach_files?access_token=${GITEE_TOKEN}" \
-    -F "file=@dist/${jar}" | head -c 200
-  echo
+    -F "file=@dist/${jar}")"
+  echo "    HTTP ${HTTP}: $(head -c 200 /tmp/gitee-upload.json)"
+  case "$HTTP" in
+    2*) ;;
+    *) echo "    上传失败"; exit 1 ;;
+  esac
 done
 
 echo "完成：https://gitee.com/${OWNER}/${REPO}/releases/tag/${TAG}"
