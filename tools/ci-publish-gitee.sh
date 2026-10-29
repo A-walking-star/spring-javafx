@@ -107,6 +107,15 @@ if [ "$missing" -eq 0 ]; then
   exit 0
 fi
 
+# 发行版对应的是 tag，构建也应该用 tag 的代码（流水线默认检出的是分支 HEAD）
+if git fetch --depth=1 origin "refs/tags/${TAG}:refs/tags/${TAG}" >/dev/null 2>&1; then
+  if git checkout -q "refs/tags/${TAG}" 2>/dev/null; then
+    echo "==> 使用 tag ${TAG} 的代码构建"
+  fi
+else
+  echo "==> 拉取 tag ${TAG} 失败，用当前 HEAD 构建（可能与 tag 不一致）"
+fi
+
 mkdir -p dist
 for i in "${!PLATFORMS[@]}"; do
   p="${PLATFORMS[$i]}"
