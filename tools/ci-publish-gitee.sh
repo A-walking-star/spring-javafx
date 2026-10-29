@@ -5,7 +5,7 @@
 # 发行版不存在时会自己创建（不依赖 GitHub Actions）。
 #
 # 环境变量：
-#   GITEE_TOKEN  有 projects 权限的私人令牌（Gitee Go 流水线变量）
+#   PUBLISH_TOKEN  有 projects 权限的私人令牌（Gitee Go 流水线变量；不能叫 GITEE_*，那是系统保留前缀）
 # 可选：
 #   TAG          指定 tag，默认取最近的 v* tag
 set -euo pipefail
@@ -13,8 +13,9 @@ set -euo pipefail
 ASSETS=(spring-javafx-demo-win-x64.jar spring-javafx-demo-linux-x64.jar spring-javafx-demo-mac-x64.jar)
 PLATFORMS=(win linux mac)
 
-if [ -z "${GITEE_TOKEN:-}" ] || [ "${GITEE_TOKEN:0:2}" = '${' ]; then
-  echo "GITEE_TOKEN 未配置（在 Gitee Go 流水线变量里添加私密变量 GITEE_TOKEN），跳过"
+TOKEN="${PUBLISH_TOKEN:-${GITEE_TOKEN:-}}"
+if [ -z "$TOKEN" ] || [ "${TOKEN:0:2}" = '${' ]; then
+  echo "PUBLISH_TOKEN 未配置（Gitee Go 流水线变量名不能以 GITEE_ 开头，所以用 PUBLISH_TOKEN），跳过"
   exit 0
 fi
 
@@ -48,7 +49,7 @@ has_asset() {
 }
 
 echo "==> 查询发行版 ..."
-DETAIL="$("${CURL[@]}" "${API}/tags/${TAG}?access_token=${GITEE_TOKEN}" || true)"
+DETAIL="$("${CURL[@]}" "${API}/tags/${TAG}?access_token=${TOKEN}" || true)"
 ID="$(id_of "$DETAIL")"
 
 BODY='已发布到 Maven Central，无需额外配置仓库：
@@ -74,7 +75,7 @@ if [ -z "$ID" ]; then
   echo "接口返回：$(echo "$DETAIL" | head -c 300)"
   echo "==> 发行版不存在，创建 ..."
   PAYLOAD="$(printf '{"access_token":"%s","tag_name":"%s","name":"spring-javafx %s","body":"%s","target_commitish":"main","prerelease":false}' \
-    "$GITEE_TOKEN" "$TAG" "$TAG" "$BODY_JSON")"
+    "$TOKEN" "$TAG" "$TAG" "$BODY_JSON")"
 
   RESP="$("${CURL[@]}" -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD" || true)"
   ID="$(id_of "$RESP")"
@@ -88,7 +89,7 @@ else
   echo "==> 已存在，id=${ID}"
   # 旧说明可能只写了 Windows 一个附件，顺手同步一下
   PATCH="$(printf '{"access_token":"%s","name":"spring-javafx %s","body":"%s"}' \
-    "$GITEE_TOKEN" "$TAG" "$BODY_JSON")"
+    "$TOKEN" "$TAG" "$BODY_JSON")"
   "${CURL[@]}" -X PATCH "${API}/${ID}" -H "Content-Type: application/json" -d "$PATCH" >/dev/null 2>&1 \
     && echo "    已更新发行版说明" || echo "    说明更新被忽略"
 fi
@@ -130,7 +131,7 @@ for i in "${!PLATFORMS[@]}"; do
 
   echo "==> 上传 ${jar} ($(du -h "dist/${jar}" | cut -f1)) ..."
   HTTP="$("${CURL[@]}" -o /tmp/gitee-upload.json -w '%{http_code}' \
-    -X POST "${API}/${ID}/attach_files?access_token=${GITEE_TOKEN}" \
+    -X POST "${API}/${ID}/attach_files?access_token=${TOKEN}" \
     -F "file=@dist/${jar}")"
   echo "    HTTP ${HTTP}: $(head -c 200 /tmp/gitee-upload.json)"
   case "$HTTP" in

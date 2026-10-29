@@ -32,7 +32,7 @@ stages:
         jdkVersion: '17'
         mavenVersion: 3.9.9
         commands:
-          - GITEE_TOKEN="${GITEE_TOKEN}" TAG="${TAG}" bash tools/ci-publish-gitee.sh
+          - PUBLISH_TOKEN="${PUBLISH_TOKEN}" TAG="${TAG}" bash tools/ci-publish-gitee.sh
         settings: []
         caches:
           - ~/.m2
