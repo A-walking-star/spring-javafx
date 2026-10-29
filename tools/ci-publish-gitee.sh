@@ -10,7 +10,6 @@
 #   TAG          指定 tag，默认取最近的 v* tag
 set -euo pipefail
 
-ASSETS=(spring-javafx-demo-win-x64.jar spring-javafx-demo-linux-x64.jar spring-javafx-demo-mac-x64.jar)
 PLATFORMS=(win linux mac)
 
 TOKEN="${PUBLISH_TOKEN:-${GITEE_TOKEN:-}}"
@@ -32,11 +31,14 @@ if [ -z "$TAG" ]; then
   exit 0
 fi
 
+VER="${TAG#v}"
+ASSETS=("spring-javafx-demo-${VER}-win-x64.jar" "spring-javafx-demo-${VER}-linux-x64.jar" "spring-javafx-demo-${VER}-mac-x64.jar")
+
 REMOTE="$(git remote get-url origin)"
 REPO="$(basename "$REMOTE" .git)"
 OWNER="$(echo "$REMOTE" | sed -E 's#.*[:/]([^/]+)/[^/]+$#\1#')"
 API="https://gitee.com/api/v5/repos/${OWNER}/${REPO}/releases"
-echo "仓库=${OWNER}/${REPO} tag=${TAG}"
+echo "仓库=${OWNER}/${REPO} tag=${TAG} version=${VER}"
 
 CURL=(curl -sS --connect-timeout 30 --max-time 180 --retry 3 --retry-delay 5 --retry-all-errors)
 
@@ -63,9 +65,9 @@ BODY='已发布到 Maven Central，无需额外配置仓库：
 ```
 
 附件是可直接运行的示例程序（内置对应平台的 JavaFX 原生库）：
-- `spring-javafx-demo-win-x64.jar`（Windows）
-- `spring-javafx-demo-linux-x64.jar`（Linux）
-- `spring-javafx-demo-mac-x64.jar`（macOS Intel）
+- `spring-javafx-demo-__VERSION__-win-x64.jar`（Windows）
+- `spring-javafx-demo-__VERSION__-linux-x64.jar`（Linux）
+- `spring-javafx-demo-__VERSION__-mac-x64.jar`（macOS Intel）
 
 运行：`java -jar <对应的 jar>`（需 JDK 8/11/17；JDK 11+ 的运行时依赖见 README）。'
 BODY="${BODY//__VERSION__/${TAG#v}}"

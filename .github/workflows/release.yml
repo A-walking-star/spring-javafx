@@ -33,6 +33,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 解析版本
+        id: ver
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -47,7 +55,7 @@ jobs:
         run: |
           mkdir -p dist
           cp demo/target/spring-javafx-demo.jar \
-             "dist/spring-javafx-demo-${{ matrix.platform }}-x64.jar"
+             "dist/spring-javafx-demo-${{ steps.ver.outputs.version }}-${{ matrix.platform }}-x64.jar"
           ls -lh dist
 
       - uses: actions/upload-artifact@v4

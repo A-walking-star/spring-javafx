@@ -31,6 +31,7 @@ if (-not $Token) { throw '缺少 Gitee 令牌：设置环境变量 GITEE_TOKEN �
 $root = Split-Path -Parent $PSScriptRoot
 $api = "https://gitee.com/api/v5/repos/$Owner/$Repo/releases"
 $platforms = @('win', 'linux', 'mac')
+$ver = $Tag.TrimStart('v')
 
 $bodyTemplate = @'
 已发布到 Maven Central，无需额外配置仓库：
@@ -44,9 +45,9 @@ $bodyTemplate = @'
 ```
 
 附件是可直接运行的示例程序（内置对应平台的 JavaFX 原生库）：
-- `spring-javafx-demo-win-x64.jar`（Windows）
-- `spring-javafx-demo-linux-x64.jar`（Linux）
-- `spring-javafx-demo-mac-x64.jar`（macOS Intel）
+- `spring-javafx-demo-__VER__-win-x64.jar`（Windows）
+- `spring-javafx-demo-__VER__-linux-x64.jar`（Linux）
+- `spring-javafx-demo-__VER__-mac-x64.jar`（macOS Intel）
 
 运行：`java -jar <对应的 jar>`（需 JDK 8/11/17；JDK 11+ 的运行时依赖见 README）。
 '@
@@ -72,7 +73,7 @@ if (-not $SkipBuild) {
             Write-Host "==> Building $p ..." -ForegroundColor Cyan
             & $Mvn -B -ntp -DskipTests "-Djavafx.platform=$p" package
             if ($LASTEXITCODE -ne 0) { throw "build failed: $p" }
-            Copy-Item "demo\target\spring-javafx-demo.jar" "$Dist\spring-javafx-demo-$p-x64.jar" -Force
+            Copy-Item "demo\target\spring-javafx-demo.jar" "$Dist\spring-javafx-demo-$ver-$p-x64.jar" -Force
         }
     } finally {
         Pop-Location
@@ -84,7 +85,7 @@ if (-not $files) { throw "no jars in $Dist; drop -SkipBuild to build first" }
 
 # ---------- 2. 找或建发行版 ----------
 $release = $null
-$body = $bodyTemplate.Replace('VERSION', $Tag.TrimStart('v'))
+$body = $bodyTemplate.Replace('VERSION', $ver).Replace('__VER__', $ver)
 try {
     $release = Invoke-Gitee "$api/tags/$Tag`?access_token=$Token"
     Write-Host "==> reuse release: $($release.name)" -ForegroundColor Yellow
