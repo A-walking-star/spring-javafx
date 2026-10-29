@@ -384,11 +384,22 @@ gpg --keyserver keyserver.ubuntu.com --send-keys <你的 KEY_ID>
 # 或上传到 keys.openpgp.org（需邮箱验证）
 ```
 
-发布：
+发布（**密钥有口令时必须提供口令**，否则会卡在 `gpg:sign` 等 stdin）：
 
 ```bash
-mvn -Pcentral,release clean deploy
+# cmd
+set MAVEN_GPG_PASSPHRASE=你的密钥口令
+# PowerShell
+$env:MAVEN_GPG_PASSPHRASE = '你的密钥口令'
+
+mvn -Pcentral -Prelease clean deploy
 ```
+
+> - 口令走环境变量 `MAVEN_GPG_PASSPHRASE`（`maven-gpg-plugin` 3.2.x 的推荐方式），
+>   不要用 `-Dgpg.passphrase=...`：命令行参数在进程列表里可见，也会留在 shell 历史里。
+> - **不要**在 pom 里加 `--pinentry-mode loopback`：插件在非交互模式下会自己加
+>   `--pinentry-mode error`，手动 loopback 会让 gpg 一直等 stdin，表现就是"构建卡在 gpg:sign"。
+> - 密钥没有口令（或已用 `gpg-agent` 缓存过）时，可以不设这个环境变量。
 
 `central` profile 里已经配好：GPG 签名（`maven-gpg-plugin`）+ 官方
 `central-publishing-maven-plugin`（生成 bundle、上传、等待校验）。

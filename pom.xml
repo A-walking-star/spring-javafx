@@ -279,7 +279,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.0.1</version>
+                        <!-- 3.2.x 起支持 passphraseEnvName（环境变量传口令，不进命令行/历史），并修正了 Windows
+                             下 stdin 口令行尾问题（MGPG-136）；3.0.1 在无口令且 pinentry=loopback 时会卡住等 stdin -->
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -290,11 +292,13 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <!-- 无交互签名：密钥有 passphrase 时由 gpg-agent 提供，或 -Dgpg.passphrase 传入 -->
-                            <gpgArguments>
-                                <arg>--pinentry-mode</arg>
-                                <arg>loopback</arg>
-                            </gpgArguments>
+                            <!--
+                                不要手动加 "pinentry-mode loopback" 参数：插件在非交互模式下会自行追加
+                                "pinentry-mode error"，手动 loopback 反而会让 gpg 一直等 stdin 的口令
+                                （表现为构建"卡死"在 gpg:sign）。
+                                口令通过环境变量 MAVEN_GPG_PASSPHRASE 传入（见 README），或用 gpg-agent 缓存。
+                            -->
+                            <bestPractices>true</bestPractices>
                         </configuration>
                     </plugin>
 
@@ -312,6 +316,10 @@
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>false</autoPublish>
                             <waitUntil>validated</waitUntil>
+                            <!-- demo 是示例工程（还是个 fat jar），不发布到 Central -->
+                            <excludeArtifacts>
+                                <artifact>spring-javafx-demo</artifact>
+                            </excludeArtifacts>
                         </configuration>
                     </plugin>
 
