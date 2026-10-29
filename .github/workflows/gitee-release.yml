@@ -1,0 +1,107 @@
+name: Gitee Release
+
+# 打 tag（v*）时在 Gitee 上创建同名发行版，并附上 Windows 版 demo jar。
+# 分支代码由 Gitee 的「仓库镜像管理」从 GitHub 拉取同步，这里只补"发行版"这一块。
+#
+# 需要两个仓库 secret（Settings → Secrets and variables → Actions）：
+#   GITEE_OWNER  你的 Gitee 用户名
+#   GITEE_TOKEN  Gitee 私人令牌，勾选 projects 权限
+# 没配这两个 secret 时会跳过后面的步骤，不会把构建跑红。
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布到 Gitee 的 tag，例如 v1.0.0'
+        required: true
+
+jobs:
+  gitee-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 检查 Gitee 凭证
+        id: check
+        env:
+          OWNER: ${{ secrets.GITEE_OWNER }}
+          TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          if [ -z "$OWNER" ] || [ -z "$TOKEN" ]; then
+            echo "::notice::未配置 GITEE_OWNER / GITEE_TOKEN，跳过 Gitee 发行版创建"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 解析 tag
+        if: steps.check.outputs.skip != 'true'
+        id: vars
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "将发布：$TAG"
+
+      - name: 构建 Windows 版 demo jar
+        if: steps.check.outputs.skip != 'true'
+        run: mvn -B -ntp -DskipTests -Djavafx.platform=win package
+
+      - name: 推送 tag 到 Gitee
+        if: steps.check.outputs.skip != 'true'
+        env:
+          OWNER: ${{ secrets.GITEE_OWNER }}
+          TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          git push "https://${OWNER}:${TOKEN}@gitee.com/${OWNER}/spring-javafx.git" \
+            "refs/tags/${{ steps.vars.outputs.tag }}"
+
+      - name: 创建 Gitee 发行版并上传附件
+        if: steps.check.outputs.skip != 'true'
+        env:
+          OWNER: ${{ secrets.GITEE_OWNER }}
+          TOKEN: ${{ secrets.GITEE_TOKEN }}
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          set -euo pipefail
+          BODY=$(cat <<'EOF'
+          已发布到 Maven Central，无需额外配置仓库：
+
+          ```xml
+          <dependency>
+              <groupId>io.github.a-walking-star</groupId>
+              <artifactId>spring-javafx</artifactId>
+              <version>VERSION</version>
+          </dependency>
+          ```
+
+          附件 `spring-javafx-demo.jar` 是可直接运行的示例程序（Windows 版，内置 JavaFX）。
+          运行：`java -jar spring-javafx-demo.jar`（需 JDK 8/11/17，JDK 11+ 需自备 openjfx）。
+          EOF
+          )
+          BODY="${BODY//VERSION/${TAG#v}}"
+
+          PAYLOAD=$(jq -n \
+            --arg token "$TOKEN" \
+            --arg tag "$TAG" \
+            --arg name "spring-javafx ${TAG}" \
+            --arg body "$BODY" \
+            '{access_token:$token, tag_name:$tag, name:$name, body:$body, target_commitish:"main", prerelease:false}')
+
+          RESP=$(curl -sS -X POST "https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases" \
+            -H "Content-Type: application/json" -d "$PAYLOAD")
+          echo "$RESP" | jq -r '.html_url // .message // .'
+
+          ID=$(echo "$RESP" | jq -r '.id // empty')
+          if [ -z "$ID" ]; then
+            echo "::error::Gitee 发行版创建失败（可能该 tag 已存在发行版，先去 Gitee 删掉重跑）"
+            exit 1
+          fi
+
+          curl -sS -X POST \
+            "https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases/${ID}/attach_files?access_token=${TOKEN}" \
+            -F "file=@demo/target/spring-javafx-demo.jar" | jq -r '.name // .'
