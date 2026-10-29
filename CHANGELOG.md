@@ -33,8 +33,7 @@
 ### 变更
 
 - **Maven 坐标变更**：`com.cc3:spring-javafx` → `io.github.a-walking-star:spring-javafx`
-  （为发布到 Maven Central 改用可验证的 GitHub 命名空间；Java 包名仍是 `com.cc3.springjavafx`，
-  `import` 不需要改）。旧坐标已废弃
+  （Java 包名仍是 `com.cc3.springjavafx`，`import` 不需要改）。旧坐标已废弃
 - `setTitleByControllerKey` / `setWidthByControllerKey` / `setHeightByControllerKey` /
   `setMinWidthByControllerKey` / `setMinHeightByControllerKey` 的返回类型由 `void` 改为 `boolean`
   （返回目标窗口是否存在）。忽略返回值的 Java 调用源码兼容，重新编译即可
@@ -51,10 +50,6 @@
 - `setWidth` / `setHeight` 等尺寸设置未校验 `NaN` / 负数 / `Infinity`，现忽略非法值并记 WARN
 - `setOpacity` 超出 `0~1` 时由 JavaFX 抛异常改为自动截断
 - 从后台线程调用窗口写方法会抛 "Not on FX application thread"，现自动投递到 JavaFX 线程
-- **构建：`-Pcentral` 发布卡死在 `gpg:sign`**。原因是 `maven-gpg-plugin` 3.0.1 配上手写的
-  `--pinentry-mode loopback` 后，密钥有口令时 gpg 会一直等 stdin（表现为构建挂起，10 分钟后才因超时报错）。
-  现升级到 3.2.8、去掉 loopback，口令改用环境变量 `MAVEN_GPG_PASSPHRASE`
-- Central bundle 用 `<excludeArtifacts>` 排除 `spring-javafx-demo`（示例工程不进 Central）
 
 ## [1.0.0] - 2026-10-22
 
@@ -81,9 +76,3 @@
 - `NewStageWebController` 构造期就注册到父窗口，初始化失败的窗口永远出现在 `getChildKeys()`
 - `ParamsUtils.onCallBack` 把 boolean/number 参数转成字符串；未转义 U+2028 等字符
 - `SpringUtils` 静态持有 BeanFactory 不释放；`AppPathUtils.deleteFiles` 失败仍返回 true
-
-### 构建
-
-- 支持 JDK 8 与 JDK 11/17 构建（JDK 11+ 通过 `jdk11-plus-compile` profile 提供编译期 openjfx）
-- 新增 JUnit 5 单元测试（配置优先级、状态机、回调脚本、字符串工具）
-- 发布：`mvn -Prelease clean deploy`（sources/javadoc + GPG 签名），`demo` 不发布

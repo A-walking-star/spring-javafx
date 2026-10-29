@@ -22,14 +22,6 @@
 </dependency>
 ```
 
-> 已发布到 **Maven Central**（[artifact 页面](https://central.sonatype.com/artifact/io.github.a-walking-star/spring-javafx)），
-> 使用方**不需要**再配 `<repositories>`。
-> `groupId` 用的是 GitHub 命名空间 `io.github.a-walking-star` —— Maven Central 要求命名空间可验证，
-> 所以不能沿用 `com.cc3`。国内拉取慢可在 `settings.xml` 里加阿里云镜像
-> `https://maven.aliyun.com/repository/public`。
->
-> 历史坐标 `com.cc3:spring-javafx` 已废弃，对应的 GitHub Packages 旧包也已删除，请勿再使用。
-
 框架会传递带入：`spring-context`、`jackson-databind`、`slf4j-api`、`snakeyaml`（解析 yml 配置必需）、
 `jakarta.annotation-api`（JDK 11+ 的 JSR-250，缺了 `@PostConstruct` 会被静默忽略）。
 如需替换版本，在你的 `dependencyManagement` 中覆盖即可。
@@ -67,7 +59,7 @@ JavaFX 11 起不再随 JDK 发布：
 
 GitHub Packages 即使公开包也要求认证，需要两处配置。
 
-`~/.m2/settings.xml`（用环境变量，本地与 CI 同一份配置；token 只需要 `read:packages`）：
+`~/.m2/settings.xml`（用环境变量，避免把 token 写进文件；token 只需要 `read:packages`）：
 
 ```xml
 <servers>
@@ -91,8 +83,6 @@ GitHub Packages 即使公开包也要求认证，需要两处配置。
     </repository>
 </repositories>
 ```
-
-> 不想配仓库也可以直接 `git clone` 后在本仓库执行 `mvn -o install`，装进本地仓库后用法完全一样。
 
 ## 2. 最小使用
 
@@ -334,111 +324,17 @@ window['$$_apiReady'] = function () {
 > 它提供的才是 `javax.annotation` 包；2.x 已改名 `jakarta.annotation`，Spring 5 不识别）。
 > 启动时框架还会做前置校验，缺失就直接失败并打印依赖坐标，不会再静默卡住。
 
-## 7. 模块、构建与发布
+## 7. 模块
 
-```
-spring-javafx/
-├── core/     io.github.a-walking-star:spring-javafx        框架本体（发布到仓库的只有它）
-├── demo/     io.github.a-walking-star:spring-javafx-demo   示例应用（deploy 已跳过，只作演示）
-└── cli/      run.bat / run.sh                              打包分发的启动脚本样例（自带 JDK + jar）
-```
+| 模块 | 说明 |
+|---|---|
+| `core/` | 框架本体，使用方依赖的就是它 |
+| `demo/` | 示例应用：一个完整可运行的最小工程 |
+| `cli/` | 分发用的启动脚本样例（自带 JDK + jar） |
 
 > Maven `groupId` 是 `io.github.a-walking-star`，Java 包名仍是 `com.cc3.springjavafx`（两者可以不同；
 > Java 包名不允许带连字符，所以没有跟着改）。升级到本坐标时只需改 `groupId`，`import` 不用动。
 
-### 构建（贡献者）
-
-- 需要 **JDK 8**（编译基线），或 **JDK 11/17**：此时 `core` 会通过 `jdk11-plus-compile` profile
-  用 openjfx 做**编译期**依赖（`provided` + `optional`，不会传递给使用方）；
-- **JDK 8 必须用自带 JavaFX 的发行版**（Oracle JDK 8、Zulu FX 8；Temurin 8 没有 javafx，
-  会报 `class file has wrong version 55.0`）。CI 里的 JDK 8 任务就是 Zulu FX 8。
-- 在 Linux/macOS 上构建时加 `-Djavafx.platform=linux`（或 `mac`），默认是 `win`。
-
-```bash
-mvn -o clean package        # 构建 core + demo
-mvn test                    # 单元测试（不依赖 JavaFX 工具包，可在无界面环境跑）
-mvn -o package -pl demo     # 只打示例的可执行 jar
-java -jar demo/target/spring-javafx-demo.jar
-```
-
-### 发布（维护者）
-
-#### 发 Maven Central（正式发布）
-
-前置条件（只需做一次）：
-
-1. **认领命名空间**：用 GitHub 账号登录 https://central.sonatype.com → Add Namespace →
-   选 GitHub 方式 → 填 `io.github.a-walking-star`（GitHub 用户名），按提示验证；
-2. **生成 User Token**：Portal 右上角账号 → Generate User Token，把 username / password
-   写进 `~/.m2/settings.xml`：
-
-```xml
-<server>
-    <id>central</id>
-    <username>Token 的 username</username>
-    <password>Token 的 password</password>
-</server>
-```
-
-3. **准备 GPG 密钥**（Central 校验每个文件的 `.asc`）：
-
-```bash
-gpg --gen-key                                   # 姓名/邮箱与 pom 的 developers 一致即可
-gpg --keyserver keyserver.ubuntu.com --send-keys <你的 KEY_ID>
-# 或上传到 keys.openpgp.org（需邮箱验证）
-```
-
-发布（**密钥有口令时必须提供口令**，否则会卡在 `gpg:sign` 等 stdin）：
-
-```bash
-# cmd
-set MAVEN_GPG_PASSPHRASE=你的密钥口令
-# PowerShell
-$env:MAVEN_GPG_PASSPHRASE = '你的密钥口令'
-
-mvn -Pcentral -Prelease clean deploy
-```
-
-> - 口令走环境变量 `MAVEN_GPG_PASSPHRASE`（`maven-gpg-plugin` 3.2.x 的推荐方式），
->   不要用 `-Dgpg.passphrase=...`：命令行参数在进程列表里可见，也会留在 shell 历史里。
-> - **不要**在 pom 里加 `--pinentry-mode loopback`：插件在非交互模式下会自己加
->   `--pinentry-mode error`，手动 loopback 会让 gpg 一直等 stdin，表现就是"构建卡在 gpg:sign"。
-> - 密钥没有口令（或已用 `gpg-agent` 缓存过）时，可以不设这个环境变量。
-
-`central` profile 里已经配好：GPG 签名（`maven-gpg-plugin`）+ 官方
-`central-publishing-maven-plugin`（生成 bundle、上传、等待校验）。
-`autoPublish=false`，所以上传后在 https://central.sonatype.com/publishing/deployments
-手工点 **Publish**（想全自动就把它改成 `true`）。
-
-Central 的硬性校验点（已满足，改动时别破坏）：
-
-- `LICENSE` 文件 + pom 的 `licenses`（MIT）一致；
-- `name` / `description` / `url` / `developers` / `scm` 齐全且真实（`name` 用的是 `${project.groupId}:${project.artifactId}`）；
-- 每个构件都有 `-sources.jar`、`-javadoc.jar` 和对应的 `.asc`、`.md5`、`.sha1`（checksum 由插件生成）；
-- `version` 不含 `-SNAPSHOT`；发布后不可覆盖（Central 不可变）。
-
-#### 发 GitHub Packages（快照 / 备用渠道）
-
-```bash
-# ~/.m2/settings.xml 里 <server id="github">（PAT 需 write:packages）
-mvn -Prelease clean deploy
-git tag v1.0.0 && git push origin v1.0.0
-```
-
-`demo` 模块的 `maven-deploy-plugin` 在 `central` profile 下会 `skip`，任何情况下都不会被发布。
-
-### 上传到公开仓库前的清理
-
-以下内容已在 `.gitignore` 中，确认不要 `git add -f`：
-
-| 路径 | 原因 |
-|---|---|
-| `target/` | 构建产物（含旧的 `spring-javafx-demo.jar`） |
-| `logs/` | 本机运行日志（含本机绝对路径） |
-| `.idea/` | IDE 配置，其中 `dataSources.xml` 可能含数据库连接 |
-| `.workbuddy/` | 本机助手记录、备份、ACL 恢复文件 |
-| `.tmp-*/` | 临时构建/探针目录 |
-| `cli/jdk-*/` | 随包分发的 JDK（体积大，应走 Release 附件） |
 
 ## 8. 常见问题
 
@@ -462,45 +358,6 @@ Windows 控制台默认代码页是 936(GBK)，而日志按 UTF-8 写字节，�
 
 不要写死 `<charset>GBK</charset>`（UTF-8 控制台会反过来乱码），也不要写死 UTF-8（就是本问题）。
 `demo/src/main/resources/logback.xml` 已按上面的写法配置，直接复制即可。
-
-**启动日志打完最后一行后就一直等待，窗口不出现，也没有任何异常（JDK 11+）**
-
-先确认不是 `javax.annotation`（JSR-250）缺失：
-
-```bash
-javap javax.annotation.PostConstruct      # JDK 11+ 上应该能打印类定义
-# 若报 "找不到类 javax.annotation.PostConstruct"，就是它
-```
-
-原因：Spring 5 只有在 classpath 上存在 `javax.annotation.Resource` 时才会注册
-`CommonAnnotationBeanPostProcessor`，缺失时 `@PostConstruct` / `@PreDestroy` 被**静默忽略**。
-框架的主窗口由 `DefaultMainController.init()`（`@PostConstruct`）打开，方法不执行 → 窗口不显示，
-`start()` 正常返回 → JavaFX 事件循环空转，进程看起来"卡住"。IDEA 里用 JDK 8 调试正常，
-换 JDK 17 的 `java -jar` 才复现，正是因为 JDK 8 自带 `javax.annotation`。
-
-- 修复：`jakarta.annotation:jakarta.annotation-api:1.3.5`（1.3.x 才是 `javax.annotation` 包；2.x 是 `jakarta.annotation`，不适用）。
-- 框架 `core` 已声明该依赖；仍复现说明 fat jar 里被排除了：`unzip -l app.jar | grep annotation-api`。
-- 框架启动时会前置校验，缺失直接抛 `IllegalStateException` 并打印依赖坐标，不会再静默卡住。
-- 排查手段：卡住时 `jstack <pid>`，能看到 `JavaFX Application Thread` 停在
-  `WinApplication._runLoop`（事件循环空转），而不是任何锁上 —— 这类"空转"基本都是回调没执行。
-
-**启动报 `缺少 YAML 解析依赖 snakeyaml（org/yaml/snakeyaml/reader/UnicodeReader）`**
-
-说明 `app.yml` / `defaults.yml` 被找到了，但运行时 classpath 上没有 `org.yaml:snakeyaml`。
-框架会刻意在这种情况直接启动失败，而不是忽略所有配置继续跑 —— 否则你只会看到
-"页面资源未找到" 这类完全不指向根因的间接错误。
-
-- Maven 命令行：确认依赖解析完整，`mvn dependency:tree` 能看到 `org.yaml:snakeyaml`。
-- IntelliJ IDEA：Maven 面板 → **Reload All Maven Projects**。IDE 会缓存 Maven 模型，
-  改了 pom 的 `<optional>` / 作用域后不 reload，运行时 classpath 仍是旧的。
-  仍不生效则 File → Invalidate Caches / Restart。
-- 校验手段：`java -jar demo/target/spring-javafx-demo.jar` 能正常启动，
-  说明框架与依赖没问题，问题在 IDE 的运行配置/模块依赖。
-
-**启动报 `页面资源未找到：xxx`**
-
-错误里会同时列出「已尝试的文件系统路径」和「已尝试的 classpath 路径」，照着这两个路径检查
-`app.resourceUrl` 配置与资源是否真的打包进了 `resources`。
 
 ---
 

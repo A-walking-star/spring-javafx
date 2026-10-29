@@ -29,12 +29,8 @@ if [ ! -x "$JAVA" ]; then
     exit 1
 fi
 
-# ===== 3. 查找 JAR 包 =====
-# 优先级：1) 同级目录 spring-javafx-demo.jar  2) demo/target/spring-javafx-demo.jar  3) 同级目录其他 jar
+# ===== 3. 查找 JAR 包（同级目录下的应用 jar，排除 sources/javadoc）=====
 JAR_FILE="${DIR}/spring-javafx-demo.jar"
-if [ ! -f "$JAR_FILE" ]; then
-    JAR_FILE="${DIR}/../demo/target/spring-javafx-demo.jar"
-fi
 if [ ! -f "$JAR_FILE" ]; then
     JAR_FILE=$(find "$DIR" -maxdepth 1 -name "*.jar" \
         ! -name "*-sources.jar" ! -name "*-javadoc.jar" | head -1)
@@ -42,7 +38,7 @@ fi
 
 if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
     echo "错误：未找到可运行的 JAR 包"
-    echo "请先执行 mvn -o package，或把 spring-javafx-demo.jar 放到脚本同级目录"
+    echo "请把应用 jar 放到本脚本同级目录（与启动脚本一起分发）"
     exit 1
 fi
 

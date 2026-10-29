@@ -261,16 +261,11 @@
         </profile>
 
         <!--
-            Maven Central（Central Portal）专用：GPG 签名 + 官方发布插件。
-            GitHub Packages 不需要签名，所以这些只在 -Pcentral 时生效，日常构建不受影响。
+            Maven Central（Central Portal）专用：GPG 签名 + 官方发布插件，仅在 -Pcentral 时生效。
 
-            用法：mvn -Pcentral,release deploy
-            前置条件：
-              1) 在 https://central.sonatype.com 用 GitHub 登录并认领命名空间 io.github.a-walking-star
-                 （GitHub 方式认领即可，无需 DNS）；
-              2) 生成 User Token，写进 ~/.m2/settings.xml 的 <server id="central">；
-              3) 本机装 gpg，生成密钥并把公钥上传到 keyserver（Central 校验 .asc 用）。
-            详见 README「发布到 Maven Central」。
+            用法：mvn -Pcentral -Prelease deploy
+            需要：central.sonatype.com 的 User Token（settings.xml 的 <server id="central">）、
+                  已上传公钥的 GPG 密钥、环境变量 MAVEN_GPG_PASSPHRASE（密钥有口令时）。
         -->
         <profile>
             <id>central</id>
@@ -296,7 +291,7 @@
                                 不要手动加 "pinentry-mode loopback" 参数：插件在非交互模式下会自行追加
                                 "pinentry-mode error"，手动 loopback 反而会让 gpg 一直等 stdin 的口令
                                 （表现为构建"卡死"在 gpg:sign）。
-                                口令通过环境变量 MAVEN_GPG_PASSPHRASE 传入（见 README），或用 gpg-agent 缓存。
+                                口令通过环境变量 MAVEN_GPG_PASSPHRASE 传入，或用 gpg-agent 缓存。
                             -->
                             <bestPractices>true</bestPractices>
                         </configuration>
