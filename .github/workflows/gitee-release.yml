@@ -57,8 +57,10 @@ jobs:
           OWNER: ${{ secrets.GITEE_OWNER }}
           TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
+          # 镜像可能已经把 tag 同步过去了，此时推送会被拒绝（ref 已存在），这不影响后面的发行版创建
           git push "https://${OWNER}:${TOKEN}@gitee.com/${OWNER}/spring-javafx.git" \
-            "refs/tags/${{ steps.vars.outputs.tag }}"
+            "refs/tags/${{ steps.vars.outputs.tag }}" \
+            || echo "::notice::tag 推送被拒绝（可能镜像已同步该 tag），继续创建发行版"
 
       - name: 创建 Gitee 发行版并上传附件
         if: steps.check.outputs.skip != 'true'
