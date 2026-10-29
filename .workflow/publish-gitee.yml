@@ -1,0 +1,41 @@
+version: '1.0'
+name: publish-gitee
+displayName: 发布 Gitee 发行版附件
+# Gitee 侧的流水线：从 GitHub 镜像同步过来之后，给对应 tag 的 Gitee 发行版
+# 补上 Windows / Linux / macOS 三个平台的 demo jar。
+#
+# 为什么放在 Gitee 侧跑：GitHub 的 runner 往 Gitee 传 40MB+ 的附件基本传不动。
+#
+# 触发方式：
+#   - tag 推送（v*）：如果镜像同步会触发 push 事件，就走这条路；
+#   - 定时（每 2 小时）：兜底，脚本是幂等的，附件齐了就直接退出，不会重复构建。
+triggers:
+  trigger: auto
+  push:
+    tags:
+      prefix:
+        - v
+  schedule:
+    - cron: '0 */2 * * ?'
+stages:
+  - name: publish-assets
+    displayName: 构建并上传附件
+    strategy: naturally
+    trigger: auto
+    executor: []
+    steps:
+      # 用 maven 插件是为了直接拿到 JDK 17 + Maven 的构建环境；
+      # 真正的逻辑在 tools/ci-publish-gitee.sh 里（先查发行版与已有附件，缺什么构建什么）。
+      - step: build@maven
+        name: publish_gitee_assets
+        displayName: 构建并上传
+        jdkVersion: '17'
+        mavenVersion: 3.9.9
+        commands:
+          - GITEE_TOKEN="${GITEE_TOKEN}" TAG="${TAG}" bash tools/ci-publish-gitee.sh
+        settings: []
+        caches:
+          - ~/.m2
+        notify: []
+        strategy:
+          retry: '0'
