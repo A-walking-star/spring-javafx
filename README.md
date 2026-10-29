@@ -341,6 +341,8 @@ spring-javafx/
 
 - 需要 **JDK 8**（编译基线），或 **JDK 11/17**：此时 `core` 会通过 `jdk11-plus-compile` profile
   用 openjfx 做**编译期**依赖（`provided` + `optional`，不会传递给使用方）；
+- **JDK 8 必须用自带 JavaFX 的发行版**（Oracle JDK 8、Zulu FX 8；Temurin 8 没有 javafx，
+  会报 `class file has wrong version 55.0`）。CI 里的 JDK 8 任务就是 Zulu FX 8。
 - 在 Linux/macOS 上构建时加 `-Djavafx.platform=linux`（或 `mac`），默认是 `win`。
 
 ```bash

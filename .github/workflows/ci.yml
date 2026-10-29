@@ -12,20 +12,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # core 以 JDK 8 为基线；11/17 走 jdk11-plus-compile profile 用 openjfx 编译
-        java: [ '8', '11', '17' ]
+        # core 以 JDK 8 为基线；11/17 走 jdk11-plus-compile profile 用 openjfx 编译。
+        # JDK 8 必须用"自带 JavaFX"的发行版（Zulu FX 8），Temurin 8 没有 javafx，
+        # 会在编译 core 时报 "class file has wrong version 55.0"（openjfx 11 的字节码）。
+        include:
+          - java: '8'
+            distro: zulu
+            pkg: jdk+fx
+          - java: '11'
+            distro: temurin
+            pkg: jdk
+          - java: '17'
+            distro: temurin
+            pkg: jdk
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: ${{ matrix.distro }}
           java-version: ${{ matrix.java }}
+          java-package: ${{ matrix.pkg }}
           cache: maven
 
       - name: Build & test
-        # Linux 上要用 linux 分类的 openjfx（JDK 11+ profile 依赖它做编译期依赖）
+        # Linux 上要用 linux 分类的 openjfx（JDK 11+ 的 profile 用它做编译期依赖）
         run: mvn -B -ntp -Djavafx.platform=linux verify
 
       - name: Upload demo jar
