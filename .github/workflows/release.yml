@@ -124,7 +124,7 @@ jobs:
             "refs/tags/${TAG}" \
             || echo "::notice::tag 推送被拒绝（可能镜像已同步），继续创建发行版"
 
-      - name: 创建 Gitee 发行版
+      - name: 创建/更新 Gitee 发行版
         if: steps.check.outputs.skip == 'false'
         id: gitee
         env:
@@ -178,35 +178,13 @@ jobs:
               exit 1
             fi
           else
-            echo "::notice::Gitee 上已有该 tag 的发行版，直接复用"
+            # 已存在则同步说明（旧说明可能只写了 Windows 一个附件）
+            PATCH=$(jq -n --arg token "$TOKEN" --arg name "spring-javafx ${TAG}" --arg body "$BODY" \
+              '{access_token:$token, name:$name, body:$body}')
+            "${CURL[@]}" -X PATCH "${API}/${ID}" -H "Content-Type: application/json" -d "$PATCH" >/dev/null \
+              && echo "::notice::已更新现有发行版的说明"
           fi
 
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           echo "发行版：https://gitee.com/${OWNER}/spring-javafx/releases/tag/${TAG}"
-
-      - name: 上传附件到 Gitee
-        if: steps.check.outputs.skip == 'false' && steps.gitee.outputs.id != ''
-        env:
-          OWNER: ${{ secrets.GITEE_OWNER }}
-          TOKEN: ${{ secrets.GITEE_TOKEN }}
-        run: |
-          set -uo pipefail
-          API="https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases/${{ steps.gitee.outputs.id }}"
-          CURL=(curl -sS --connect-timeout 30 --max-time 900 --retry 2 --retry-delay 10 --retry-all-errors)
-          # 单个附件 43MB 左右，跨国上传慢；失败只告警，不影响发行版本身
-          for f in dist/*.jar; do
-            name=$(basename "$f")
-            exists=$(curl -sS --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 5 --retry-all-errors \
-              "${API}?access_token=${TOKEN}" \
-              | jq -r --arg n "$name" '[.assets[]?.name] | index($n) // empty' || true)
-            if [ -n "$exists" ]; then
-              echo "::notice::${name} 已存在，跳过"
-              continue
-            fi
-            echo "上传 ${name} ..."
-            if ! "${CURL[@]}" -X POST "${API}/attach_files?access_token=${TOKEN}" \
-                -F "file=@${f}" | head -c 300; then
-              echo "::warning::${name} 上传失败或超时，可在 Gitee 页面手动补传"
-            fi
-            echo
-          done
+          echo "::notice::附件由维护者在本地用 tools/publish-gitee.ps1 上传（Gitee 从 GitHub runner 上传太慢）"

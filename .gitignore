@@ -51,3 +51,7 @@ desktop.ini
 # 临时文件/目录
 .tmp-*
 
+
+# 本地构建的多平台 jar（tools/publish-gitee.ps1 用）
+dist/
+
