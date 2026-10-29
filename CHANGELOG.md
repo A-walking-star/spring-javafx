@@ -32,6 +32,9 @@
 
 ### 变更
 
+- **Maven 坐标变更**：`com.cc3:spring-javafx` → `io.github.a-walking-star:spring-javafx`
+  （为发布到 Maven Central 改用可验证的 GitHub 命名空间；Java 包名仍是 `com.cc3.springjavafx`，
+  `import` 不需要改）。旧坐标已废弃
 - `setTitleByControllerKey` / `setWidthByControllerKey` / `setHeightByControllerKey` /
   `setMinWidthByControllerKey` / `setMinHeightByControllerKey` 的返回类型由 `void` 改为 `boolean`
   （返回目标窗口是否存在）。忽略返回值的 Java 调用源码兼容，重新编译即可

@@ -5,12 +5,12 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.cc3</groupId>
+    <groupId>io.github.a-walking-star</groupId>
     <artifactId>spring-javafx-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
-    <name>spring-javafx-parent</name>
+    <name>${project.groupId}:${project.artifactId}</name>
     <description>JavaFX + Spring 桌面应用框架（聚合工程）</description>
 
     <url>https://github.com/A-walking-star/spring-javafx</url>
@@ -98,7 +98,7 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.cc3</groupId>
+                <groupId>io.github.a-walking-star</groupId>
                 <artifactId>spring-javafx</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -261,9 +261,16 @@
         </profile>
 
         <!--
-            Maven Central 专用：GPG 签名（Central 会校验 .asc）。本机需装 gpg 且公钥已上传 keyserver。
-            GitHub Packages 不要求签名，所以单独放一个 profile —— 没有 gpg 时 -Prelease 不会失败。
-            用法：mvn -Prelease,central deploy（并先把 distributionManagement 换成 Central 地址）
+            Maven Central（Central Portal）专用：GPG 签名 + 官方发布插件。
+            GitHub Packages 不需要签名，所以这些只在 -Pcentral 时生效，日常构建不受影响。
+
+            用法：mvn -Pcentral,release deploy
+            前置条件：
+              1) 在 https://central.sonatype.com 用 GitHub 登录并认领命名空间 io.github.a-walking-star
+                 （GitHub 方式认领即可，无需 DNS）；
+              2) 生成 User Token，写进 ~/.m2/settings.xml 的 <server id="central">；
+              3) 本机装 gpg，生成密钥并把公钥上传到 keyserver（Central 校验 .asc 用）。
+            详见 README「发布到 Maven Central」。
         -->
         <profile>
             <id>central</id>
@@ -282,6 +289,39 @@
                                 </goals>
                             </execution>
                         </executions>
+                        <configuration>
+                            <!-- 无交互签名：密钥有 passphrase 时由 gpg-agent 提供，或 -Dgpg.passphrase 传入 -->
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </plugin>
+
+                    <!--
+                        官方发布插件：把产物打成 bundle 上传到 Central Portal 并校验。
+                        autoPublish=false → 上传后在 https://central.sonatype.com/publishing/deployments 手工点 Publish；
+                        想要全自动就改成 true（也可 -Dcentral.publishing.autoPublish=true）。
+                    -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.12.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>false</autoPublish>
+                            <waitUntil>validated</waitUntil>
+                        </configuration>
+                    </plugin>
+
+                    <!-- Central 走上面的 bundle 上传，不能再让 maven-deploy-plugin 往 GitHub Packages 推一遍 -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-deploy-plugin</artifactId>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

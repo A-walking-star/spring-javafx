@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.cc3</groupId>
+        <groupId>io.github.a-walking-star</groupId>
         <artifactId>spring-javafx-parent</artifactId>
         <version>1.0.0</version>
     </parent>
@@ -14,7 +14,7 @@
     <artifactId>spring-javafx</artifactId>
     <packaging>jar</packaging>
 
-    <name>spring-javafx</name>
+    <name>${project.groupId}:${project.artifactId}</name>
     <description>
         基于 Spring 容器与 JavaFX WebView 的桌面应用框架：用前端页面写界面，用 Spring 管理后端 Bean，
         通过 JavaApiBridge 把 Java 能力暴露给 JavaScript。

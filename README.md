@@ -15,14 +15,16 @@
 
 ```xml
 <dependency>
-    <groupId>com.cc3</groupId>
+    <groupId>io.github.a-walking-star</groupId>
     <artifactId>spring-javafx</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
 
-> 目前发布在 **GitHub Packages**（未上 Maven Central），所以还要声明仓库与只读凭证，
-> 见下面「从 GitHub Packages 引入」。
+> 发布在 **Maven Central**（`groupId` = `io.github.a-walking-star`，GitHub 命名空间）。
+> 若还没同步到 Central，可改用 GitHub Packages，见下面「从 GitHub Packages 引入」。
+>
+> 历史坐标 `com.cc3:spring-javafx` 已废弃，请勿再使用。
 
 框架会传递带入：`spring-context`、`jackson-databind`、`slf4j-api`、`snakeyaml`（解析 yml 配置必需）、
 `jakarta.annotation-api`（JDK 11+ 的 JSR-250，缺了 `@PostConstruct` 会被静默忽略）。
@@ -332,10 +334,13 @@ window['$$_apiReady'] = function () {
 
 ```
 spring-javafx/
-├── core/     com.cc3:spring-javafx        框架本体（无示例资源，发布到仓库的只有它）
-├── demo/     com.cc3:spring-javafx-demo   示例应用（deploy 已跳过，只作演示）
-└── cli/      run.bat / run.sh             打包分发的启动脚本样例（自带 JDK + jar）
+├── core/     io.github.a-walking-star:spring-javafx        框架本体（发布到仓库的只有它）
+├── demo/     io.github.a-walking-star:spring-javafx-demo   示例应用（deploy 已跳过，只作演示）
+└── cli/      run.bat / run.sh                              打包分发的启动脚本样例（自带 JDK + jar）
 ```
+
+> Maven `groupId` 是 `io.github.a-walking-star`，Java 包名仍是 `com.cc3.springjavafx`（两者可以不同；
+> Java 包名不允许带连字符，所以没有跟着改）。升级到本坐标时只需改 `groupId`，`import` 不用动。
 
 ### 构建（贡献者）
 
@@ -354,25 +359,58 @@ java -jar demo/target/spring-javafx-demo.jar
 
 ### 发布（维护者）
 
-当前发布目标是 **GitHub Packages**（仓库地址已写进 pom 的 `distributionManagement`）。
+#### 发 Maven Central（正式发布）
+
+前置条件（只需做一次）：
+
+1. **认领命名空间**：用 GitHub 账号登录 https://central.sonatype.com → Add Namespace →
+   选 GitHub 方式 → 填 `io.github.a-walking-star`（GitHub 用户名），按提示验证；
+2. **生成 User Token**：Portal 右上角账号 → Generate User Token，把 username / password
+   写进 `~/.m2/settings.xml`：
+
+```xml
+<server>
+    <id>central</id>
+    <username>Token 的 username</username>
+    <password>Token 的 password</password>
+</server>
+```
+
+3. **准备 GPG 密钥**（Central 校验每个文件的 `.asc`）：
 
 ```bash
-# 1) 配凭证：~/.m2/settings.xml 里 <server id="github"> 的 username/password
-#    （推荐 ${env.GITHUB_ACTOR} / ${env.GITHUB_TOKEN}，token 需 write:packages）
-# 2) 发布：-Prelease 会额外产出 sources.jar / javadoc.jar
+gpg --gen-key                                   # 姓名/邮箱与 pom 的 developers 一致即可
+gpg --keyserver keyserver.ubuntu.com --send-keys <你的 KEY_ID>
+# 或上传到 keys.openpgp.org（需邮箱验证）
+```
+
+发布：
+
+```bash
+mvn -Pcentral,release clean deploy
+```
+
+`central` profile 里已经配好：GPG 签名（`maven-gpg-plugin`）+ 官方
+`central-publishing-maven-plugin`（生成 bundle、上传、等待校验）。
+`autoPublish=false`，所以上传后在 https://central.sonatype.com/publishing/deployments
+手工点 **Publish**（想全自动就把它改成 `true`）。
+
+Central 的硬性校验点（已满足，改动时别破坏）：
+
+- `LICENSE` 文件 + pom 的 `licenses`（MIT）一致；
+- `name` / `description` / `url` / `developers` / `scm` 齐全且真实（`name` 用的是 `${project.groupId}:${project.artifactId}`）；
+- 每个构件都有 `-sources.jar`、`-javadoc.jar` 和对应的 `.asc`、`.md5`、`.sha1`（checksum 由插件生成）；
+- `version` 不含 `-SNAPSHOT`；发布后不可覆盖（Central 不可变）。
+
+#### 发 GitHub Packages（快照 / 备用渠道）
+
+```bash
+# ~/.m2/settings.xml 里 <server id="github">（PAT 需 write:packages）
 mvn -Prelease clean deploy
-# 3) 打 tag + 建 Release（附 demo 可执行 jar）
 git tag v1.0.0 && git push origin v1.0.0
 ```
 
-以后要发 Maven Central：
-
-- `groupId` 换成可验证的命名空间（通常 `io.github.a-walking-star`），`distributionManagement` 换成 OSSRH 地址；
-- 本机装 gpg，公钥上传 keyserver，用 `mvn -Prelease,central deploy`（`central` profile 里是 GPG 签名）；
-- 其余硬性要求：LICENSE 与 pom 的 `licenses` 一致、`url`/`scm`/`developers` 真实、`version` 不含 `-SNAPSHOT`、
-  附件含 `-sources.jar` / `-javadoc.jar` 及三者的 `.asc`。
-
-`demo` 模块的 `maven-deploy-plugin` 已 `skip`，不会被发布。
+`demo` 模块的 `maven-deploy-plugin` 在 `central` profile 下会 `skip`，任何情况下都不会被发布。
 
 ### 上传到公开仓库前的清理
 
