@@ -32,6 +32,8 @@ stages:
         jdkVersion: '17'
         mavenVersion: 3.9.9
         commands:
+          # 诊断：只打印有没有注入，不打印值。若这里显示 no，说明变量没关联到流水线
+          - 'echo "PUBLISH_TOKEN 是否注入：$([ -n "${PUBLISH_TOKEN}" ] && echo yes || echo no)"'
           - PUBLISH_TOKEN="${PUBLISH_TOKEN}" TAG="${TAG}" bash tools/ci-publish-gitee.sh
         settings: []
         caches:
