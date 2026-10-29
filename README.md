@@ -1,6 +1,7 @@
 # spring-javafx
 
 [![CI](https://github.com/A-walking-star/spring-javafx/actions/workflows/ci.yml/badge.svg)](https://github.com/A-walking-star/spring-javafx/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.a-walking-star/spring-javafx?label=maven%20central)](https://central.sonatype.com/artifact/io.github.a-walking-star/spring-javafx)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 用前端页面写界面的 JavaFX 桌面应用框架：JavaFX 负责窗口与 WebView，Spring 容器负责 Bean 管理与依赖注入，
@@ -21,10 +22,11 @@
 </dependency>
 ```
 
-> 发布在 **Maven Central**（`groupId` = `io.github.a-walking-star`，GitHub 命名空间）。
-> 若还没同步到 Central，可改用 GitHub Packages，见下面「从 GitHub Packages 引入」。
+> 已发布到 **Maven Central**（`groupId` = `io.github.a-walking-star`，GitHub 命名空间，无法用 `com.cc3` 上 Central）。
+> 刚上线时中央仓库索引可能还没刷新（首发要过审核），此时可先走 GitHub Packages，见「从 GitHub Packages 引入」。
+> 国内拉取慢的话，在 `settings.xml` 里加阿里云镜像即可：`https://maven.aliyun.com/repository/public`。
 >
-> 历史坐标 `com.cc3:spring-javafx` 已废弃，请勿再使用。
+> 历史坐标 `com.cc3:spring-javafx` 已废弃并从 Packages 中移除，请勿再使用。
 
 框架会传递带入：`spring-context`、`jackson-databind`、`slf4j-api`、`snakeyaml`（解析 yml 配置必需）、
 `jakarta.annotation-api`（JDK 11+ 的 JSR-250，缺了 `@PostConstruct` 会被静默忽略）。
