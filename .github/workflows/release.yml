@@ -132,8 +132,11 @@ jobs:
           TOKEN: ${{ secrets.GITEE_TOKEN }}
           TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           API="https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases"
+          # Gitee 从 GitHub 的 runner 访问经常超时/抖动，统一加重试
+          CURL=(curl -sS --connect-timeout 30 --max-time 180 --retry 3 --retry-delay 5 --retry-all-errors)
+
           BODY=$(cat <<'EOF'
           已发布到 Maven Central，无需额外配置仓库：
 
@@ -155,24 +158,27 @@ jobs:
           )
           BODY="${BODY//VERSION/${TAG#v}}"
 
-          PAYLOAD=$(jq -n \
-            --arg token "$TOKEN" \
-            --arg tag "$TAG" \
-            --arg name "spring-javafx ${TAG}" \
-            --arg body "$BODY" \
-            '{access_token:$token, tag_name:$tag, name:$name, body:$body, target_commitish:"main", prerelease:false}')
+          # 先查是否已有该 tag 的发行版（重跑时很常见），没有再创建
+          DETAIL=$("${CURL[@]}" "${API}/tags/${TAG}?access_token=${TOKEN}" || true)
+          ID=$(echo "$DETAIL" | jq -r '.id // empty' 2>/dev/null || true)
 
-          RESP=$(curl -sS --connect-timeout 20 --max-time 120 -X POST "$API" \
-            -H "Content-Type: application/json" -d "$PAYLOAD" || true)
-
-          ID=$(echo "$RESP" | jq -r '.id // empty' 2>/dev/null || true)
           if [ -z "$ID" ]; then
-            echo "$RESP" | head -c 500
-            echo "::notice::创建失败（可能已存在），尝试复用"
-            DETAIL=$(curl -sS --connect-timeout 20 --max-time 60 \
-              "${API}/tags/${TAG}?access_token=${TOKEN}" || true)
-            ID=$(echo "$DETAIL" | jq -r '.id // empty' 2>/dev/null || true)
-              if [ -z "$ID" ]; then echo "::error::Gitee 发行版创建失败"; exit 1; fi
+            PAYLOAD=$(jq -n \
+              --arg token "$TOKEN" \
+              --arg tag "$TAG" \
+              --arg name "spring-javafx ${TAG}" \
+              --arg body "$BODY" \
+              '{access_token:$token, tag_name:$tag, name:$name, body:$body, target_commitish:"main", prerelease:false}')
+
+            RESP=$("${CURL[@]}" -X POST "$API" -H "Content-Type: application/json" -d "$PAYLOAD" || true)
+            ID=$(echo "$RESP" | jq -r '.id // empty' 2>/dev/null || true)
+            if [ -z "$ID" ]; then
+              echo "$RESP" | head -c 500
+              echo "::error::Gitee 发行版创建失败（上面是接口返回，网络超时也会走到这里）"
+              exit 1
+            fi
+          else
+            echo "::notice::Gitee 上已有该 tag 的发行版，直接复用"
           fi
 
           echo "id=$ID" >> "$GITHUB_OUTPUT"
@@ -186,18 +192,19 @@ jobs:
         run: |
           set -uo pipefail
           API="https://gitee.com/api/v5/repos/${OWNER}/spring-javafx/releases/${{ steps.gitee.outputs.id }}"
+          CURL=(curl -sS --connect-timeout 30 --max-time 900 --retry 2 --retry-delay 10 --retry-all-errors)
           # 单个附件 43MB 左右，跨国上传慢；失败只告警，不影响发行版本身
           for f in dist/*.jar; do
             name=$(basename "$f")
-            exists=$(curl -sS --connect-timeout 20 --max-time 60 "${API}?access_token=${TOKEN}" \
+            exists=$(curl -sS --connect-timeout 30 --max-time 120 --retry 3 --retry-delay 5 --retry-all-errors \
+              "${API}?access_token=${TOKEN}" \
               | jq -r --arg n "$name" '[.assets[]?.name] | index($n) // empty' || true)
             if [ -n "$exists" ]; then
               echo "::notice::${name} 已存在，跳过"
               continue
             fi
             echo "上传 ${name} ..."
-            if ! curl -sS --connect-timeout 20 --max-time 900 \
-                -X POST "${API}/attach_files?access_token=${TOKEN}" \
+            if ! "${CURL[@]}" -X POST "${API}/attach_files?access_token=${TOKEN}" \
                 -F "file=@${f}" | head -c 300; then
               echo "::warning::${name} 上传失败或超时，可在 Gitee 页面手动补传"
             fi
