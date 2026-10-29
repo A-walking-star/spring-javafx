@@ -22,11 +22,12 @@
 </dependency>
 ```
 
-> 已发布到 **Maven Central**（`groupId` = `io.github.a-walking-star`，GitHub 命名空间，无法用 `com.cc3` 上 Central）。
-> 刚上线时中央仓库索引可能还没刷新（首发要过审核），此时可先走 GitHub Packages，见「从 GitHub Packages 引入」。
-> 国内拉取慢的话，在 `settings.xml` 里加阿里云镜像即可：`https://maven.aliyun.com/repository/public`。
+> 已发布到 **Maven Central**（[artifact 页面](https://central.sonatype.com/artifact/io.github.a-walking-star/spring-javafx)）。
+> `groupId` 用的是 GitHub 命名空间 `io.github.a-walking-star` —— Maven Central 要求命名空间可验证，
+> 所以不能再沿用 `com.cc3`。国内拉取慢可在 `settings.xml` 里加阿里云镜像
+> `https://maven.aliyun.com/repository/public`。
 >
-> 历史坐标 `com.cc3:spring-javafx` 已废弃并从 Packages 中移除，请勿再使用。
+> 历史坐标 `com.cc3:spring-javafx` 已废弃，请勿再使用（GitHub Packages 上的旧包待清理）。
 
 框架会传递带入：`spring-context`、`jackson-databind`、`slf4j-api`、`snakeyaml`（解析 yml 配置必需）、
 `jakarta.annotation-api`（JDK 11+ 的 JSR-250，缺了 `@PostConstruct` 会被静默忽略）。
